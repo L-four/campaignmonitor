@@ -1,0 +1,647 @@
+<?php
+/* $Id$ */
+/* hook_help
+
+  Provide online user help.
+  
+  By implementing hook_help(), a module can make documentation available to the engine or to other modules. All user help should be returned using this hook; developer help should be provided with Doxygen/api.module comments.
+  
+  For a detailed usage example, see page_example.module.
+  Parameters
+  
+  $section Drupal URL path (or: menu item) the help is being requested for, e.g. admin/node or user/edit. Recognizes special descriptors after a "#" sign. Some examples:
+  
+    * admin/modules#name The name of a module (unused, but there)
+    * admin/modules#description The description found on the admin/system/modules page.
+    * admin/help#modulename The module's help text, displayed on the admin/help page and through the module's individual help link.
+    * user/help#modulename The help for a distributed authorization module (if applicable).
+    * node/add#nodetype The description of a node type (if applicable).
+  
+  Return value
+  
+  A localized string containing the help text. Every web link, l(), or url() must be replaced with %something and put into the final t() call: $output .= 'A role defines a group of users that have certain privileges as defined in !permission.'; $output = t($output, array('!permission' => l(t('user permissions'), 'admin/user/permission')));
+
+ */
+
+
+function campaignmonitor_help($section) {
+  switch ($section) {
+    /* case 'admin/help#block':
+      return t('<p>Blocks are the boxes visible in the sidebar(s)
+        of your web site. These are usually generated automatically by
+        modules (e.g. recent forum topics), but you can also create your
+        own blocks using either static HTML or dynamic PHP content.</p>');
+      break;
+    case 'admin/modules#description':
+      return t('Controls the boxes that are displayed around the main content.');
+      break;*/
+  }
+}
+
+
+/* hook_perm
+
+Define user permissions.
+
+This hook can supply permissions that the module defines, so that they can be selected on the
+user permissions page and used to restrict access to actions the module performs.
+
+The permissions in the array do not need to be wrapped with the function t(), since the string
+extractor takes care of extracting permission names defined in the perm hook for translation.
+
+Permissions are checked using user_access().
+
+For a detailed usage example, see page_example.module.
+
+Return value
+
+An array of permissions strings.
+
+ */
+
+
+function campaignmonitor_perm() {
+  return array('administer campaignmonitor', 'access archive', 'join newsletter');
+}
+
+function campaignmonitor_is_subscribed($api_key, $list_id, $email, $show_errors) {
+  $retval = false;
+  $client = new SoapClient(null,
+    array("location" => "http://app.campaignmonitor.com/api/api.asmx",
+      "uri"  => "http://app.campaignmonitor.com/api/",
+      "style"  => SOAP_RPC,
+      "use"  => SOAP_LITERAL,
+      "trace"  => true,
+    )
+  );
+
+  try{
+    //make soap call
+    $result = $client->__soapCall("Subscribers.GetIsSubscribed",
+        array(new SoapVar($api_key, XSD_STRING, null, null, "ApiKey", "http://app.campaignmonitor.com/api/"),
+          new SoapVar($list_id, XSD_INT, null, null, "list_id", "http://app.campaignmonitor.com/api/"),
+          new SoapVar($email, XSD_STRING, null, null, "Email", "http://app.campaignmonitor.com/api/"),
+          new SoapVar($name, XSD_STRING, null, null, "Name", "http://app.campaignmonitor.com/api/"),
+        ),
+        array("soapaction" => "http://app.campaignmonitor.com/api/Subscribers.GetIsSubscribed")
+    );
+    if ($result->Code != 0) {
+      watchdog('CAMPAIGNMONITOR RESULT: ', 'Code - '. $result->Code .', Message - '. $result->Message);
+    }
+    else if ($result == 'False') {
+      $retval = false;
+    }
+    else if ($result == 'True') {
+      $retval = true;
+    }
+  } catch (SoapFault $e) {
+    if ($show_errors) {
+      watchdog('ERROR IN CAMPAIGNMONITOR', 'There was an error checking if joined to newsletter: '. $e->faultstring, WATCHDOG_ERROR);
+      drupal_set_message("There is an error with the newsletter server. Please try again later.", 'error');
+    }
+    $retval = false;
+  }
+  return $retval;
+}
+
+function campaignmonitor_add_subscriber($api_key, $list_id, $name, $email, $show_errors) {
+  $client = new SoapClient(null,
+    array("location" => "http://app.campaignmonitor.com/api/api.asmx",
+      "uri" => "http://app.campaignmonitor.com/api/",
+      "style" => SOAP_RPC,
+      "use"  => SOAP_LITERAL,
+      "trace" => true,
+    )
+  );
+
+  try{
+    //make soap call
+    $result = $client->__soapCall("Subscriber.AddAndResubscribe",
+      array(new SoapVar($api_key, XSD_STRING, null, null, "ApiKey", "http://app.campaignmonitor.com/api/"),
+        new SoapVar($list_id, XSD_INT, null, null, "list_id", "http://app.campaignmonitor.com/api/"),
+        new SoapVar($email, XSD_STRING, null, null, "Email", "http://app.campaignmonitor.com/api/"),
+        new SoapVar($name, XSD_STRING, null, null, "Name", "http://app.campaignmonitor.com/api/"),
+      ),
+      array("soapaction"  => "http://app.campaignmonitor.com/api/Subscriber.AddAndResubscribe")
+    );
+    if ($result->Code != 0) {
+      watchdog('CAMPAIGNMONITOR RESULT: ', 'Code - '. $result->Code .', Message - '. $result->Message);
+      drupal_set_message("There was an error joining to newsletter.", 'error');
+    }
+    else {
+      drupal_set_message("You have successfully been added.", 'status');
+    }
+  } catch (SoapFault $e) {
+    if ($show_errors) {
+      watchdog('ERROR IN CAMPAIGNMONITOR', 'There was an error joining to newsletter: '. $e->faultstring, WATCHDOG_ERROR);
+      drupal_set_message("There is an error with the newsletter server. Please try again later.", 'error');
+    }
+  }
+}
+
+function campaignmonitor_remove_subscriber($api_key, $list_id, $email, $show_errors) {
+  $client = new SoapClient(null,
+    array(
+      "location"  => "http://app.campaignmonitor.com/api/api.asmx",
+      "uri"       => "http://app.campaignmonitor.com/api/",
+      "style"     => SOAP_RPC,
+      "use"       => SOAP_LITERAL,
+      "trace"     => true
+    )
+  );
+
+  try{
+    //make soap call
+    $result = $client->__soapCall("Subscriber.Unsubscribe",
+      array(
+        new SoapVar($api_key, XSD_STRING, null, null, "ApiKey", "http://app.campaignmonitor.com/api/"),
+        new SoapVar($list_id, XSD_INT, null, null, "list_id", "http://app.campaignmonitor.com/api/"),
+        new SoapVar($email, XSD_STRING, null, null, "Email", "http://app.campaignmonitor.com/api/"),
+        new SoapVar($name, XSD_STRING, null, null, "Name", "http://app.campaignmonitor.com/api/"),
+      ),
+      array("soapaction" => "http://app.campaignmonitor.com/api/Subscriber.Unsubscribe")
+    );
+    if ($result->Code != 0) {
+      watchdog('CAMPAIGNMONITOR RESULT: ', 'Code - '. $result->Code .', Message - '. $result->Message);
+      drupal_set_message("There was an error unsubscribing from newsletter.", 'error');
+    }
+    else {
+      drupal_set_message("You have successfully been unsubscribed.", 'status');
+    }
+  } catch (SoapFault $e) {
+    if ($show_errors) {
+      watchdog('ERROR IN CAMPAIGNMONITOR', 'There was an error unsubscribing from newsletter: '. $e->faultstring, WATCHDOG_ERROR);
+      drupal_set_message("There is an error with the newsletter server. Please try again later.", 'error');
+    }
+  }
+}
+
+/* hook_menu
+
+Define menu items and page callbacks.
+
+This hook enables modules to register paths, which determines whose requests are to be handled.
+Depending on the type of registration requested by each path, a link is placed in the the
+navigation block and/or an item appears in the menu administration page (q=admin/menu).
+
+Drupal will call this hook twice: once with $may_cache set to TRUE, and once with it set to
+FALSE. Therefore, each menu item should be registered when $may_cache is either TRUE or FALSE,
+not both times. Setting a menu item twice will result in unspecified behavior.
+
+This hook is also a good place to put code which should run exactly once per page view.
+Put it in an if (!may_cache) block.
+
+For a detailed usage example, see page_example.module.
+
+Parameters
+
+$may_cache A boolean indicating whether cacheable menu items should be returned. The menu cache
+  is per-user, so items can be cached so long as they are not dependent on the user's current
+  location. See the local task definitions in node_menu() for an example of uncacheable menu items.
+
+Return value
+
+An array of menu items. Each menu item is an associative array that may contain the following key-value pairs:
+  * "path": Required.
+      The path to link to when the user selects the item.
+  * "title": Required.
+      The translated title of the menu item.
+  * "callback":
+      The function to call to display a web page when the user visits the path. If omitted, the parent
+      menu item's callback will be used instead.
+  * "callback arguments":
+      An array of arguments to pass to the callback function.
+  * "access":
+      A boolean value that determines whether the user has access rights to this menu item.
+      Usually determined by a call to user_access(). If omitted and "callback" is also absent,
+      the access rights of the parent menu item will be used instead.
+  * "weight":
+      An integer that determines relative position of items in the menu; higher-weighted items sink.
+      Defaults to 0. When in doubt, leave this alone; the default alphabetical order is usually best.
+  * "type":
+      A bitmask of flags describing properties of the menu item. Many shortcut bitmasks are provided in menu.inc:
+        o MENU_NORMAL_ITEM:
+            Normal menu items show up in the menu tree and can be moved/hidden by the administrator.
+        o MENU_ITEM_GROUPING:
+            Item groupings are used for pages like "node/add" that simply list subpages to visit.
+        o MENU_CALLBACK:
+            Callbacks simply register a path so that the correct function is fired when the URL is accessed.
+        o MENU_DYNAMIC_ITEM:
+            Dynamic menu items change frequently, and so should not be stored in the database for
+            administrative customization.
+        o MENU_SUGGESTED_ITEM:
+            Modules may "suggest" menu items that the administrator may enable.
+        o MENU_LOCAL_TASK:
+            Local tasks are rendered as tabs by default.
+        o MENU_DEFAULT_LOCAL_TASK:
+            Every set of local tasks should provide one "default" task, that links to the same path as its
+            parent when clicked.
+    If the "type" key is omitted, MENU_NORMAL_ITEM is assumed.
+
+ */
+function campaignmonitor_user_form() {
+  global $user;
+  // Replace api_key and list_id with your own details
+  $api_key = variable_get('campaignmonitor_api_key', '');
+  $list_id = variable_get('campaignmonitor_list_d', 0);
+
+  $email = $user->mail;
+
+  if (campaignmonitor_isSubscribed($api_key, $list_id, $email, true)) {
+    watchdog('TESTING', 'subscribed');
+    $default = true;
+  }
+  else {
+    watchdog('TESTING', 'unsubscribed');
+    $default = false;
+  }
+
+  $form['subscribe_newsletter'] = array(
+    '#type'          => 'checkbox',
+    '#title'         => variable_get('campaignmonitor_user_pagedisplaytext', 'Newsletter'),
+    '#default_value' => $default,
+  );
+  $form['is_subscribed'] = array(
+    '#type'          => 'hidden',
+    '#default_value' => $default,
+  );
+  $form['submit'] = array('#type' => 'submit', '#value' => t('Save'));
+  return $form;
+}
+
+function campaignmonitor_user_page() {
+  return drupal_get_form('campaignmonitor_user_form');
+}
+
+function campaignmonitor_newsletter_archive() {
+  $url = variable_get('campaignmonitor_pastcampaignurl', '');
+  if ($url == '') {
+    $content = '<p>The past campaign URL has not been set. Please set this in the administration pages.</p>';
+  }
+  else{
+    $content = '<script type="text/javascript" src="'. variable_get('campaignmonitor_PastCampaignURL', '') .'"></script>';
+  }
+  return $content;
+}
+
+function campaignmonitor_menu($may_cache) {
+  global $user;
+  $items = array();
+  
+  if ($may_cache) {
+    $items[] = array(
+      'path' => 'admin/settings/campaignmonitor',
+      'title' => t('Campaign Monitor'),
+      'description' => t('Setup Campaign Monitor values.'),
+      'callback' => 'drupal_get_form',
+      'callback arguments' => '_campaignmonitor_admin',
+      'access' => user_access('administer campaignmonitor'),
+      'type' => MENU_NORMAL_ITEM);
+  $items[] = array('path' => 'newsletter_archive', 'title' => t('Newsletter Archive'),
+      'callback' => 'campaignmonitor_newsletter_archive',
+      'access' => user_access('access archive'),
+      'type' => MENU_SUGGESTED_ITEM);
+    /* $items[] = array('path' => 'node/add/blog', 'title' => t
+  ('blog entry'),
+      'access' => user_access('maintain personal blog'));
+    $items[] = array('path' => 'blog', 'title' => t('blogs'),
+      'callback' => 'blog_page',
+      'access' => user_access('access content'),
+      'type' => MENU_SUGGESTED_ITEM);
+    $items[] = array('path' => 'blog/'. $user->uid, 'title' => t('my blog'),
+      'access' => user_access('maintain personal blog'),
+      'type' => MENU_DYNAMIC_ITEM);
+    $items[] = array('path' => 'blog/feed', 'title' => t('RSS feed'),
+      'callback' => 'blog_feed',
+      'access' => user_access('access content'),
+      'type' => MENU_CALLBACK);*/
+  }
+  else {
+    if (arg(0) == 'user' && is_numeric(arg(1))) {
+      $account = user_load(array('uid' => arg(1)));
+      if ($user->uid == $account->uid || user_access('administer users')) {
+        $items[] = array('path' => 'user/'. arg(1) .'/newsletters',
+          'title' => t('My Newsletters'),
+          'callback' => 'campaignmonitor_user_page',
+          'type' => MENU_LOCAL_TASK,
+          'access' => user_access('join newsletter'),
+          'weight' => 5,
+        );
+      }
+    }
+  }
+  return $items;
+}
+
+/* hook_form_alter
+
+Perform alterations before a form is rendered. One popular use of this hook is to add form
+elements to the node form.
+
+The node object of the node whose form you are altering can be retrieved at $form['#node'].
+
+Parameters
+
+$form_id String representing the name of the form itself. Typically this is the name of the
+  function that generated the form.
+
+$form Nested array of form elements that comprise the form.
+
+Return value
+
+None.
+
+ */
+
+function campaignmonitor_form_alter($form_id, &$form) {
+  $display_on = variable_get('campaignmonitor_display_on', array());
+  if (('contact_mail_page' == $form_id && array_key_exists('contact', $display_on)) || ('user_register' == $form_id && array_key_exists('registration', $display_on)) && user_access('join newsletter')) {
+    $form['subscribe_newsletter'] = array(
+      '#type'          => 'checkbox',
+      '#title'         => t(variable_get('campaignmonitor_checkboxdisplaytext', 'Join our Newsletter?')),
+      '#weight'        => 99,
+      '#default_value' => 1,
+    );
+  
+    $form['submit']['#weight'] = 100;
+    
+    $form['#submit'] = array('_campaignmonitor_form_submit' => array()) + (array)$form['#submit'];
+  }
+}
+
+/* hook_block
+
+Declare a block or set of blocks.
+
+Any module can export a block (or blocks) to be displayed by defining the _block hook. This hook is called by
+theme.inc to display a block, and also by block.module to procure the list of available blocks.
+
+As of 4.7, all block properties (except theme) can be set in hook_block's 'view' operation. You can give your
+blocks an explicit weight, enable them, limit them to given pages, etc. These settings will be registered when
+the block is first loaded at admin/block, and from there can be changed manually via block administration.
+
+Note that if you set a region that isn't available in a given theme, the block will be registered instead to
+that theme's default region (the first item in the _regions array).
+
+The functions mymodule_display_block_1 and 2, as used in the example, should of course be defined somewhere in
+your module and return the content you want to display to your users. If the "content" element is empty, no
+block will be displayed even if "subject" is present.
+
+After completing your blocks, do not forget to enable them in the block admin menu.
+
+For a detailed usage example, see block_example.module.
+
+Parameters
+
+$op What kind of information to retrieve about the block or blocks. Possible values:
+  * 'list': A list of all blocks defined by the module.
+  * 'configure': A configuration form.
+  * 'save': Save the configuration options.
+  * 'view': Information about a particular block and default settings.
+$delta Which block to return (not applicable if $op is 'list'). Although it is most commonly an integer starting at 0,
+  this is not mandatory. For instance, aggregator.module uses string values for $delta
+$edit If $op is 'save', the submitted form data from the configuration form.
+
+Return value
+
+If $op is 'list', return an array of arrays, each of which must define an 'info' element describing the block.
+If $op is 'configure', optionally return a string containing the configuration form. If $op is 'save', return nothing,
+If $op is 'view', return an array which must define a 'subject' element and a 'content' element defining the block
+indexed by $delta.
+
+ */
+
+function campaignmonitor_general_form() {
+  global $user;
+  profile_load_profile($user->uid);
+  if ($user->uid != 0) {
+    $form['name'] = array(
+      '#type'  => 'hidden',
+      '#value' => $user->profile_name,
+    );
+    $form['email'] = array(
+      '#type'  => 'hidden',
+      '#value' => $user->mail,
+    );
+  
+    if (campaignmonitor_is_subscribed(variable_get('campaignmonitor_api_key', ''), variable_get('campaignmonitor_list_id', 0) , $user->mail, false)) {
+      $default = true;
+    }
+    else {
+      $default = false;
+    }
+  
+  }
+  else {
+      $form['name'] = array(
+        '#type'      => 'textfield',
+        '#title'     => t('Name'),
+        '#size'      => 20,
+        '#maxlength' => 50,
+        '#required'  => TRUE,
+    );
+    $form['email'] = array(
+      '#type'      => 'textfield',
+      '#title'     => t('Email'),
+      '#size'      => 20,
+      '#maxlength' => 100,
+      '#required'  => TRUE,
+    );
+    
+    $default = false;
+  }
+  
+  $form['unsubscribe_newsletter'] = array(
+    '#type'          => 'checkbox',
+    '#title'         => t('Unsubscribe'),
+    '#default_value' => $default,
+  );
+
+  $form['submit'] = array('#type' => 'submit', '#value' => t('Submit'));
+  return $form;
+}
+
+function campaignmonitor_general_form_submit($form_id, $form_values) {
+  // Replace api_key and list_id with your own details
+  $api_key = variable_get('campaignmonitor_api_key', '');
+  $list_id = variable_get('campaignmonitor_list_id', 0);
+  
+  $name = $form_values['name'];
+  $email = $form_values['email'];
+
+  // any cases other then these are when things are unchanged
+  if (!$form_values['unsubscribe_newsletter']) {
+    // this is the case where they now want to be subscribed, and weren't before
+    campaignmonitor_add_subscriber($api_key, $list_id, $name, $email, false);
+  }
+  else if ($form_values['unsubscribe_newsletter']) {
+    // this is the case where they don't want to be subscribed, and were before
+    campaignmonitor_remove_subscriber($api_key, $list_id, $email, false);
+  }
+}
+
+function campaignmonitor_signup_block() {
+  global $user;
+  profile_load_profile($user->uid);
+  $content = '';
+  if ($user->uid != 0) {
+    $content .= '<p><strong>Name:</strong><br />'. $user->profile_name;
+    $content .= '<br /><strong>Email:</strong><br />'. $user->mail .'</p>';
+  }
+  $content .= drupal_get_form('campaignmonitor_general_form');
+  if (user_access('access archive')) {
+    $content .= l('Newsletter Archive', 'newsletter_archive');
+  }
+  return $content;
+}
+
+function campaignmonitor_block($op = 'list', $delta = 0, $edit = array()) {
+  if ($op == 'list') {
+    $blocks[0] = array('info' => t('Newsletter block to allow signup to newsletter for all.'),
+      'weight' => 0, 'enabled' => 0, 'region' => 'left');
+    return $blocks;
+  }
+  else if ($op == 'configure' && $delta == 0) {
+    /* $form['items'] = array(
+      '#type' => 'select',
+      '#title' => t('Number of items'),
+      '#default_value' => variable_get('XXX_block_items', 0),
+      '#options' => array('1', '2', '3'),
+    );
+    return $form;*/
+  }
+  else if ($op == 'save' && $delta == 0) {
+    /* variable_set('XXX_block_items', $edit['items']);*/
+  }
+  else if ($op == 'view') {
+    switch ($delta) {
+      case 0:
+        $block = array('subject' => t('Join Newsletter'),
+          'content' => campaignmonitor_signup_block());
+        break;
+      /* case 1:
+        $block = array('subject' => t('Title of block #2'),
+          'content' => "XXX");
+        break;*/
+    }
+    return $block;
+  }
+}
+
+
+/* DEFINED BY ME */
+
+function _campaignmonitor_admin() {
+
+  $form['campaignmonitor_api_key'] = array(
+    '#type' => 'textfield',
+    '#title' => t('API Key'),
+    '#default_value' => variable_get('campaignmonitor_api_key', ''),
+    '#required' => TRUE,
+    '#size' => 50,
+    '#maxlength' => 50,
+    '#description' => t("Your Campaign Monitor API Key.")
+  );
+  
+  $form['campaignmonitor_client_id'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Client ID'),
+    '#default_value' => variable_get('campaignmonitor_client_id', ''),
+    '#required' => TRUE,
+    '#size' => 10,
+    '#maxlength' => 10,
+    '#description' => t("Your Campaign Monitor Client ID.")
+  );
+  
+  $form['campaignmonitor_list_id'] = array(
+    '#type' => 'textfield',
+    '#title' => t('List ID'),
+    '#default_value' => variable_get('campaignmonitor_list_id', ''),
+  '#required' => TRUE,
+    '#size' => 10,
+    '#maxlength' => 10,
+    '#description' => t("Your Campaign Monitor List ID.")
+  );
+  
+  $form['campaignmonitor_display_on'] = array(
+    '#type' => 'checkboxes',
+    '#title' => t('Display on Options'),
+    '#default_value' => variable_get('campaignmonitor_display_on', array('contact', 'registration')),
+    '#options' => array(
+      'contact' => t('Contact Page'),
+      'registration' => t('Registration Page')
+    ),
+    '#description' => t('Choose which forms you want to display the Join Newsletter checkbox.')
+  );
+  
+  $form['campaignmonitor_checkboxisplaytext'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Display Text for Checkbox'),
+    '#default_value' => variable_get('campaignmonitor_checkboxdisplaytext', 'Join our Newsletter?'),
+    '#size' => 50,
+    '#maxlength' => 50,
+    '#description' => t("This text will display next to the checkbox on the selected forms.")
+  );
+  
+  $form['campaignmonitor_userpagedisplaytext'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Display Text for User Page'),
+    '#default_value' => variable_get('campaignmonitor_userpagedisplaytext', 'Newsletter'),
+    '#size' => 50,
+    '#maxlength' => 50,
+    '#description' => t("This text will display next to the checkbox on the user profile page.")
+  );
+  
+  $form['campaignmonitor_pastcampaignurl'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Past Campaign URL'),
+    '#default_value' => variable_get('campaignmonitor_pastcampaignurl', ''),
+    '#size' => 100,
+    '#maxlength' => 100,
+    '#description' => t("This is required if you want to use the page that displays past campaigns. You can find this value if you go to Manage Clients, click on the client, go to the link that tells you how to display past campaigns, then copy the URL ONLY from the html given. The URL is in between the src=\"\" value.")
+  );
+  
+  return system_settings_form($form);
+}
+
+function _campaignmonitor_form_submit($form_id, $form_values) {
+  if ($form_values['subscribe_newsletter']) {
+    if ('contact_mail_page' == $form_id) {
+      $form_values['message'] .= "\n\n" . t('Subscribed to newsletter.');
+    }
+
+    // Replace api_key and list_id with your own details
+    $api_key = variable_get('campaignmonitor_api_key', '');
+    $list_id = variable_get('campaignmonitor_list_id', 0);
+  
+    $email = $form_values['mail'];
+    $name = $form_values['name'];
+
+  campaignmonitor_add_subscriber($api_key, $list_id, $name, $email);
+  }
+}
+
+
+
+function campaignmonitor_user_form_submit($form_id, $form_values)  {
+  global $user;
+  profile_load_profile($user->uid);
+  // Replace api_key and list_id with your own details
+  $api_key = variable_get('campaignmonitor_api_key', '');
+  $list_id = variable_get('campaignmonitor_list_id', 0);
+  
+  $name = $user->profile_name;
+  $email = $user->mail;
+
+  // any cases other then these are when things are unchanged
+  if ($form_values['subscribe_newsletter'] && !$form_values['is_subscribed']) {
+    // this is the case where they now want to be subscribed, and weren't before
+    watchdog('TESTING', 'adding');
+    campaignmonitor_add_subscriber($api_key, $list_id, $name, $email);
+  }
+  else if (!$form_values['subscribe_newsletter'] && $form_values['is_subscribed']) {
+    // this is the case where they don't want to be subscribed, and were before
+    watchdog('TESTING', 'removing');
+    campaignmonitor_remove_subscriber($api_key, $list_id, $email);
+  }
+}
