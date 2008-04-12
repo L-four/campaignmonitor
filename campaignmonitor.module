@@ -157,6 +157,41 @@ function campaignmonitor_remove_subscriber($api_key, $list_id, $email, $show_err
   }
 }
 
+function campaignmonitor_get_subscriber($api_key, $list_id, $email, $show_errors) {
+  $retval = array("name" => '', "email" => $email);
+  $client = new SoapClient(null,
+    array("location" => "http://app.campaignmonitor.com/api/api.asmx",
+      "uri"  => "http://app.campaignmonitor.com/api/",
+      "style"  => SOAP_RPC,
+      "use"  => SOAP_LITERAL,
+      "trace"  => true,
+    )
+  );
+
+  try{
+    //make soap call
+    $result = $client->__soapCall("Subscribers.GetSingleSubscriber",
+        array(new SoapVar($api_key, XSD_STRING, null, null, "ApiKey", "http://app.campaignmonitor.com/api/"),
+          new SoapVar($list_id, XSD_INT, null, null, "ListID", "http://app.campaignmonitor.com/api/"),
+          new SoapVar($email, XSD_STRING, null, null, "EmailAddress", "http://app.campaignmonitor.com/api/"),
+        ),
+        array("soapaction" => "http://app.campaignmonitor.com/api/Subscribers.GetSingleSubscriber")
+    );
+    if ($result->Code != 0) {
+      watchdog('CAMPAIGNMONITOR RESULT: ', 'Code - '. $result->Code .', Message - '. $result->Message, WATCHDOG_NOTICE);
+    }
+    else {
+      $retval['name'] = $result->Name;
+    }
+  } catch (SoapFault $e) {
+    if ($show_errors) {
+      watchdog('ERROR IN CAMPAIGNMONITOR', 'There was an error checking if joined to newsletter: '. $e->faultstring, WATCHDOG_ERROR);
+      drupal_set_message("There is an error with the newsletter server. Please try again later.", 'error');
+    }
+  }
+  return $retval;
+}
+
 function campaignmonitor_user_form() {
   global $user;
   // Replace api_key and list_id with your own details
@@ -271,6 +306,10 @@ function campaignmonitor_general_form() {
     if (campaignmonitor_is_subscribed(variable_get('campaignmonitor_api_key', ''), 
 		  variable_get('campaignmonitor_list_id', 0) , $email, false)) {
       $default = true;
+			// Also if subscribed get name
+			$subscriber = campaignmonitor_get_subscriber(variable_get('campaignmonitor_api_key', ''),
+			  variable_get('campaignmonitor_list_id', 0), $email, false);
+			$name = $subscriber['name'];
     }
     else {
       $default = false;
