@@ -39,26 +39,7 @@ function campaignmonitor_help($section) {
 }
 
 
-/* hook_perm
-
-Define user permissions.
-
-This hook can supply permissions that the module defines, so that they can be selected on the
-user permissions page and used to restrict access to actions the module performs.
-
-The permissions in the array do not need to be wrapped with the function t(), since the string
-extractor takes care of extracting permission names defined in the perm hook for translation.
-
-Permissions are checked using user_access().
-
-For a detailed usage example, see page_example.module.
-
-Return value
-
-An array of permissions strings.
-
- */
-
+/* hook_perm */
 
 function campaignmonitor_perm() {
   return array('administer campaignmonitor', 'access archive', 'join newsletter');
@@ -79,7 +60,7 @@ function campaignmonitor_is_subscribed($api_key, $list_id, $email, $show_errors)
     //make soap call
     $result = $client->__soapCall("Subscribers.GetIsSubscribed",
         array(new SoapVar($api_key, XSD_STRING, null, null, "ApiKey", "http://app.campaignmonitor.com/api/"),
-          new SoapVar($list_id, XSD_INT, null, null, "list_id", "http://app.campaignmonitor.com/api/"),
+          new SoapVar($list_id, XSD_INT, null, null, "ListID", "http://app.campaignmonitor.com/api/"),
           new SoapVar($email, XSD_STRING, null, null, "Email", "http://app.campaignmonitor.com/api/"),
           new SoapVar($name, XSD_STRING, null, null, "Name", "http://app.campaignmonitor.com/api/"),
         ),
@@ -118,7 +99,7 @@ function campaignmonitor_add_subscriber($api_key, $list_id, $name, $email, $show
     //make soap call
     $result = $client->__soapCall("Subscriber.AddAndResubscribe",
       array(new SoapVar($api_key, XSD_STRING, null, null, "ApiKey", "http://app.campaignmonitor.com/api/"),
-        new SoapVar($list_id, XSD_INT, null, null, "list_id", "http://app.campaignmonitor.com/api/"),
+        new SoapVar($list_id, XSD_INT, null, null, "ListID", "http://app.campaignmonitor.com/api/"),
         new SoapVar($email, XSD_STRING, null, null, "Email", "http://app.campaignmonitor.com/api/"),
         new SoapVar($name, XSD_STRING, null, null, "Name", "http://app.campaignmonitor.com/api/"),
       ),
@@ -155,7 +136,7 @@ function campaignmonitor_remove_subscriber($api_key, $list_id, $email, $show_err
     $result = $client->__soapCall("Subscriber.Unsubscribe",
       array(
         new SoapVar($api_key, XSD_STRING, null, null, "ApiKey", "http://app.campaignmonitor.com/api/"),
-        new SoapVar($list_id, XSD_INT, null, null, "list_id", "http://app.campaignmonitor.com/api/"),
+        new SoapVar($list_id, XSD_INT, null, null, "ListID", "http://app.campaignmonitor.com/api/"),
         new SoapVar($email, XSD_STRING, null, null, "Email", "http://app.campaignmonitor.com/api/"),
         new SoapVar($name, XSD_STRING, null, null, "Name", "http://app.campaignmonitor.com/api/"),
       ),
@@ -176,69 +157,6 @@ function campaignmonitor_remove_subscriber($api_key, $list_id, $email, $show_err
   }
 }
 
-/* hook_menu
-
-Define menu items and page callbacks.
-
-This hook enables modules to register paths, which determines whose requests are to be handled.
-Depending on the type of registration requested by each path, a link is placed in the the
-navigation block and/or an item appears in the menu administration page (q=admin/menu).
-
-Drupal will call this hook twice: once with $may_cache set to TRUE, and once with it set to
-FALSE. Therefore, each menu item should be registered when $may_cache is either TRUE or FALSE,
-not both times. Setting a menu item twice will result in unspecified behavior.
-
-This hook is also a good place to put code which should run exactly once per page view.
-Put it in an if (!may_cache) block.
-
-For a detailed usage example, see page_example.module.
-
-Parameters
-
-$may_cache A boolean indicating whether cacheable menu items should be returned. The menu cache
-  is per-user, so items can be cached so long as they are not dependent on the user's current
-  location. See the local task definitions in node_menu() for an example of uncacheable menu items.
-
-Return value
-
-An array of menu items. Each menu item is an associative array that may contain the following key-value pairs:
-  * "path": Required.
-      The path to link to when the user selects the item.
-  * "title": Required.
-      The translated title of the menu item.
-  * "callback":
-      The function to call to display a web page when the user visits the path. If omitted, the parent
-      menu item's callback will be used instead.
-  * "callback arguments":
-      An array of arguments to pass to the callback function.
-  * "access":
-      A boolean value that determines whether the user has access rights to this menu item.
-      Usually determined by a call to user_access(). If omitted and "callback" is also absent,
-      the access rights of the parent menu item will be used instead.
-  * "weight":
-      An integer that determines relative position of items in the menu; higher-weighted items sink.
-      Defaults to 0. When in doubt, leave this alone; the default alphabetical order is usually best.
-  * "type":
-      A bitmask of flags describing properties of the menu item. Many shortcut bitmasks are provided in menu.inc:
-        o MENU_NORMAL_ITEM:
-            Normal menu items show up in the menu tree and can be moved/hidden by the administrator.
-        o MENU_ITEM_GROUPING:
-            Item groupings are used for pages like "node/add" that simply list subpages to visit.
-        o MENU_CALLBACK:
-            Callbacks simply register a path so that the correct function is fired when the URL is accessed.
-        o MENU_DYNAMIC_ITEM:
-            Dynamic menu items change frequently, and so should not be stored in the database for
-            administrative customization.
-        o MENU_SUGGESTED_ITEM:
-            Modules may "suggest" menu items that the administrator may enable.
-        o MENU_LOCAL_TASK:
-            Local tasks are rendered as tabs by default.
-        o MENU_DEFAULT_LOCAL_TASK:
-            Every set of local tasks should provide one "default" task, that links to the same path as its
-            parent when clicked.
-    If the "type" key is omitted, MENU_NORMAL_ITEM is assumed.
-
- */
 function campaignmonitor_user_form() {
   global $user;
   // Replace api_key and list_id with your own details
@@ -301,20 +219,6 @@ function campaignmonitor_menu($may_cache) {
       'callback' => 'campaignmonitor_newsletter_archive',
       'access' => user_access('access archive'),
       'type' => MENU_SUGGESTED_ITEM);
-    /* $items[] = array('path' => 'node/add/blog', 'title' => t
-  ('blog entry'),
-      'access' => user_access('maintain personal blog'));
-    $items[] = array('path' => 'blog', 'title' => t('blogs'),
-      'callback' => 'blog_page',
-      'access' => user_access('access content'),
-      'type' => MENU_SUGGESTED_ITEM);
-    $items[] = array('path' => 'blog/'. $user->uid, 'title' => t('my blog'),
-      'access' => user_access('maintain personal blog'),
-      'type' => MENU_DYNAMIC_ITEM);
-    $items[] = array('path' => 'blog/feed', 'title' => t('RSS feed'),
-      'callback' => 'blog_feed',
-      'access' => user_access('access content'),
-      'type' => MENU_CALLBACK);*/
   }
   else {
     if (arg(0) == 'user' && is_numeric(arg(1))) {
@@ -333,25 +237,7 @@ function campaignmonitor_menu($may_cache) {
   return $items;
 }
 
-/* hook_form_alter
-
-Perform alterations before a form is rendered. One popular use of this hook is to add form
-elements to the node form.
-
-The node object of the node whose form you are altering can be retrieved at $form['#node'].
-
-Parameters
-
-$form_id String representing the name of the form itself. Typically this is the name of the
-  function that generated the form.
-
-$form Nested array of form elements that comprise the form.
-
-Return value
-
-None.
-
- */
+/* hook_form_alter */
 
 function campaignmonitor_form_alter($form_id, &$form) {
   $display_on = variable_get('campaignmonitor_display_on', array());
@@ -369,62 +255,21 @@ function campaignmonitor_form_alter($form_id, &$form) {
   }
 }
 
-/* hook_block
-
-Declare a block or set of blocks.
-
-Any module can export a block (or blocks) to be displayed by defining the _block hook. This hook is called by
-theme.inc to display a block, and also by block.module to procure the list of available blocks.
-
-As of 4.7, all block properties (except theme) can be set in hook_block's 'view' operation. You can give your
-blocks an explicit weight, enable them, limit them to given pages, etc. These settings will be registered when
-the block is first loaded at admin/block, and from there can be changed manually via block administration.
-
-Note that if you set a region that isn't available in a given theme, the block will be registered instead to
-that theme's default region (the first item in the _regions array).
-
-The functions mymodule_display_block_1 and 2, as used in the example, should of course be defined somewhere in
-your module and return the content you want to display to your users. If the "content" element is empty, no
-block will be displayed even if "subject" is present.
-
-After completing your blocks, do not forget to enable them in the block admin menu.
-
-For a detailed usage example, see block_example.module.
-
-Parameters
-
-$op What kind of information to retrieve about the block or blocks. Possible values:
-  * 'list': A list of all blocks defined by the module.
-  * 'configure': A configuration form.
-  * 'save': Save the configuration options.
-  * 'view': Information about a particular block and default settings.
-$delta Which block to return (not applicable if $op is 'list'). Although it is most commonly an integer starting at 0,
-  this is not mandatory. For instance, aggregator.module uses string values for $delta
-$edit If $op is 'save', the submitted form data from the configuration form.
-
-Return value
-
-If $op is 'list', return an array of arrays, each of which must define an 'info' element describing the block.
-If $op is 'configure', optionally return a string containing the configuration form. If $op is 'save', return nothing,
-If $op is 'view', return an array which must define a 'subject' element and a 'content' element defining the block
-indexed by $delta.
-
- */
-
 function campaignmonitor_general_form() {
   global $user;
-  profile_load_profile($user->uid);
+	$name = '';
+	$email = '';
+	$default = false;
+	
+	// Check if the profile module is installed. If it is, use the name element of the profile
+	if (module_exists("profile")) {
+  	profile_load_profile($user->uid);
+		$name = $user->profile_name;
+	}
   if ($user->uid != 0) {
-    $form['name'] = array(
-      '#type'  => 'hidden',
-      '#value' => $user->profile_name,
-    );
-    $form['email'] = array(
-      '#type'  => 'hidden',
-      '#value' => $user->mail,
-    );
-  
-    if (campaignmonitor_is_subscribed(variable_get('campaignmonitor_api_key', ''), variable_get('campaignmonitor_list_id', 0) , $user->mail, false)) {
+    $email = $user->mail;
+    if (campaignmonitor_is_subscribed(variable_get('campaignmonitor_api_key', ''), 
+		  variable_get('campaignmonitor_list_id', 0) , $email, false)) {
       $default = true;
     }
     else {
@@ -432,24 +277,23 @@ function campaignmonitor_general_form() {
     }
   
   }
-  else {
-      $form['name'] = array(
-        '#type'      => 'textfield',
-        '#title'     => t('Name'),
-        '#size'      => 20,
-        '#maxlength' => 50,
-        '#required'  => TRUE,
-    );
-    $form['email'] = array(
-      '#type'      => 'textfield',
-      '#title'     => t('Email'),
-      '#size'      => 20,
-      '#maxlength' => 100,
-      '#required'  => TRUE,
-    );
-    
-    $default = false;
-  }
+	
+  $form['name'] = array(
+    '#type'          => 'textfield',
+    '#title'         => t('Name'),
+    '#size'          => 20,
+    '#maxlength'     => 50,
+    '#required'      => TRUE,
+		'#default_value' => $name,
+  );
+  $form['email'] = array(
+    '#type'          => 'textfield',
+    '#title'         => t('Email'),
+    '#size'          => 20,
+    '#maxlength'     => 100,
+    '#required'      => TRUE,
+		'#default_value' => $email,
+  );
   
   $form['unsubscribe_newsletter'] = array(
     '#type'          => 'checkbox',
@@ -482,13 +326,8 @@ function campaignmonitor_general_form_submit($form_id, $form_values) {
 
 function campaignmonitor_signup_block() {
   global $user;
-  profile_load_profile($user->uid);
   $content = '';
-  if ($user->uid != 0) {
-    $content .= '<p><strong>Name:</strong><br />'. $user->profile_name;
-    $content .= '<br /><strong>Email:</strong><br />'. $user->mail .'</p>';
-  }
-  $content .= drupal_get_form('campaignmonitor_general_form');
+	$content .= drupal_get_form('campaignmonitor_general_form');
   if (user_access('access archive')) {
     $content .= l('Newsletter Archive', 'newsletter_archive');
   }
@@ -617,20 +456,22 @@ function _campaignmonitor_form_submit($form_id, $form_values) {
     $email = $form_values['mail'];
     $name = $form_values['name'];
 
-  campaignmonitor_add_subscriber($api_key, $list_id, $name, $email);
+ 	  campaignmonitor_add_subscriber($api_key, $list_id, $name, $email);
   }
 }
 
-
-
 function campaignmonitor_user_form_submit($form_id, $form_values)  {
   global $user;
-  profile_load_profile($user->uid);
+  // Check if the profile module is installed. If it is, use the name element of the profile
+	if (module_exists("profile")) {
+  	profile_load_profile($user->uid);
+		$profile_name = $user->profile_name;
+	}
   // Replace api_key and list_id with your own details
   $api_key = variable_get('campaignmonitor_api_key', '');
   $list_id = variable_get('campaignmonitor_list_id', 0);
   
-  $name = $user->profile_name;
+  $name = $profile_name;
   $email = $user->mail;
 
   // any cases other then these are when things are unchanged
