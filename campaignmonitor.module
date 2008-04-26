@@ -200,12 +200,10 @@ function campaignmonitor_user_form() {
 
   $email = $user->mail;
 
-  if (campaignmonitor_isSubscribed($api_key, $list_id, $email, true)) {
-    watchdog('TESTING', 'subscribed');
+  if (campaignmonitor_is_subscribed($api_key, $list_id, $email, true)) {
     $default = true;
   }
   else {
-    watchdog('TESTING', 'unsubscribed');
     $default = false;
   }
 
@@ -516,12 +514,10 @@ function campaignmonitor_user_form_submit($form_id, $form_values)  {
   // any cases other then these are when things are unchanged
   if ($form_values['subscribe_newsletter'] && !$form_values['is_subscribed']) {
     // this is the case where they now want to be subscribed, and weren't before
-    watchdog('TESTING', 'adding');
     campaignmonitor_add_subscriber($api_key, $list_id, $name, $email);
   }
   else if (!$form_values['subscribe_newsletter'] && $form_values['is_subscribed']) {
     // this is the case where they don't want to be subscribed, and were before
-    watchdog('TESTING', 'removing');
     campaignmonitor_remove_subscriber($api_key, $list_id, $email);
   }
 }
