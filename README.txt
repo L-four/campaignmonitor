@@ -1,7 +1,7 @@
-{\rtf1\ansi\ansicpg1252\cocoartf949\cocoasubrtf270
+{\rtf1\ansi\ansicpg1252\cocoartf949\cocoasubrtf330
 {\fonttbl\f0\fswiss\fcharset0 Helvetica;}
 {\colortbl;\red255\green255\blue255;}
-\paperw11900\paperh16840\margl1440\margr1440\vieww9000\viewh8400\viewkind0
+\paperw11900\paperh16840\margl1440\margr1440\vieww25140\viewh20640\viewkind0
 \pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\ql\qnatural\pardirnatural
 
 \f0\fs24 \cf0 $Id$\
@@ -47,6 +47,8 @@ http://www.campaignmonitor.com/api/required.aspx\
 Enter these into the module's settings page.\
 \
 It is encouraged for you to spend some time setting up your campaign monitor account before diving in with this module.\
+\
+Make sure you have permissions set-up correctly. By default anonymous users won't be able to join the newsletter. I recommend setting these up at the same time you configure the module.\
 \
 -----------------\
 Future plans\
