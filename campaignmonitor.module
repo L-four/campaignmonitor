@@ -65,7 +65,8 @@ function campaignmonitor_menu($may_cache) {
  */
 function campaignmonitor_form_alter($form_id, &$form) {
   $display_on = variable_get('campaignmonitor_display_on', array());
-  if (('contact_mail_page' == $form_id && array_key_exists('contact', $display_on)) || ('user_register' == $form_id && array_key_exists('registration', $display_on)) && user_access('join newsletter')) {
+	
+  if ((('contact_mail_page' == $form_id && $display_on['contact']) || ('user_register' == $form_id && $display_on['registration'])) && user_access('join newsletter')) {
     $form['subscribe_newsletter'] = array(
       '#type'          => 'checkbox',
       '#title'         => t(variable_get('campaignmonitor_checkboxdisplaytext', 'Join our Newsletter?')),
@@ -156,7 +157,7 @@ function campaignmonitor_admin() {
   $form['campaignmonitor_display_on'] = array(
     '#type' => 'checkboxes',
     '#title' => t('Display on Options'),
-    '#default_value' => variable_get('campaignmonitor_display_on', array('contact', 'registration')),
+    '#default_value' => variable_get('campaignmonitor_display_on', array()),
     '#options' => array(
       'contact' => t('Contact Page'),
       'registration' => t('Registration Page')
