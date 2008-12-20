@@ -1,4 +1,4 @@
-{\rtf1\ansi\ansicpg1252\cocoartf949\cocoasubrtf270
+{\rtf1\ansi\ansicpg1252\cocoartf949\cocoasubrtf350
 {\fonttbl\f0\fswiss\fcharset0 Helvetica;}
 {\colortbl;\red255\green255\blue255;}
 \paperw11900\paperh16840\margl1440\margr1440\vieww9000\viewh8400\viewkind0
@@ -43,6 +43,8 @@ Configuration\
 Make sure to have your API Key, Client Id and List id for the list you wish to use.\
 To retrieve these values follow the instructions here:\
 http://www.campaignmonitor.com/api/required.aspx\
+\
+This module has been updated to work with the new combined Campaign Monitor and MailBuild service, so please make sure you have updated your API keys if needed.\
 \
 Enter these into the module's settings page.\
 \
