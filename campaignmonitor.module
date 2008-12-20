@@ -1,72 +1,53 @@
 <?php
 /* $Id$ */
 
-/******************************
- DRUPAL HOOKS
-******************************/
-
-/**
- * Implementation of hook_help()
- */
-function campaignmonitor_help($section) {
-  switch ($section) {
+/* DRUPAL HOOKS */
+/* hook_help */
+function campaignmonitor_help($path, $arg) {
+  switch ($path) {
     case 'admin/settings/campaignmonitor':
       return '<p>' . t('Use your API key and other keys to have users register for a mailing list setup through Campaign Monitor.') . '</p>';
   }
 }
 
-/**
- * Implementation of hook_perm()
- */
+
+/* hook_perm */
 function campaignmonitor_perm() {
   return array('administer campaignmonitor', 'access archive', 'join newsletter');
 }
 
-/**
- * Implementation of hook_menu()
- */
-function campaignmonitor_menu($may_cache) {
-  global $user;
+/* hook_menu */
+function campaignmonitor_menu() {
   $items = array();
   
-  if ($may_cache) {
-    $items[] = array(
-      'path' => 'admin/settings/campaignmonitor',
-      'title' => t('Campaign Monitor'),
-      'description' => t('Setup Campaign Monitor values.'),
-      'callback' => 'drupal_get_form',
-      'callback arguments' => 'campaignmonitor_admin',
-      'access' => user_access('administer campaignmonitor'),
-      'type' => MENU_NORMAL_ITEM);
-  $items[] = array('path' => 'newsletter_archive', 'title' => t('Newsletter Archive'),
-      'callback' => 'campaignmonitor_newsletter_archive',
-      'access' => user_access('access archive'),
-      'type' => MENU_SUGGESTED_ITEM);
-  }
-  else {
-    if (arg(0) == 'user' && is_numeric(arg(1))) {
-      $account = user_load(array('uid' => arg(1)));
-      if ($user->uid == $account->uid || user_access('administer users')) {
-        $items[] = array('path' => 'user/'. arg(1) .'/newsletters',
-          'title' => t('My Newsletters'),
-          'callback' => 'campaignmonitor_user_page',
-          'type' => MENU_LOCAL_TASK,
-          'access' => user_access('join newsletter'),
-          'weight' => 5,
-        );
-      }
-    }
-  }
+  $items['admin/settings/campaignmonitor'] = array(
+    'title' => t('Campaign Monitor'),
+    'description' => t('Setup Campaign Monitor values.'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('campaignmonitor_admin'),
+    'access arguments' => array('administer campaignmonitor'),
+    'type' => MENU_NORMAL_ITEM);
+  $items['newsletter_archive'] = array(
+    'title' => t('Newsletter Archive'),
+    'page callback' => 'campaignmonitor_newsletter_archive',
+    'access arguments' => array('access archive'),
+    'type' => MENU_SUGGESTED_ITEM);
+	  
+  $items['user/%user/newsletters'] = array(
+    'title' => t('My Newsletters'),
+    'page callback' => 'campaignmonitor_user_page',
+	'access arguments' => array('join newsletter'),
+    'type' => MENU_LOCAL_TASK,
+    'weight' => 5,
+  );
   return $items;
 }
 
-/**
- * Implementation of hook_form_alter()
- */
-function campaignmonitor_form_alter($form_id, &$form) {
+/* hook_form_alter */
+function campaignmonitor_form_alter(&$form, $form_state, $form_id) {
   $display_on = variable_get('campaignmonitor_display_on', array());
-	
-  if ((('contact_mail_page' == $form_id && $display_on['contact']) || ('user_register' == $form_id && $display_on['registration'])) && user_access('join newsletter')) {
+  
+  if (('contact_mail_page' == $form_id && $display_on['contact'] == 'contact') || ('user_register' == $form_id && $display_on['registration'] == 'registration') && user_access('join newsletter')) {
     $form['subscribe_newsletter'] = array(
       '#type'          => 'checkbox',
       '#title'         => t(variable_get('campaignmonitor_checkboxdisplaytext', 'Join our Newsletter?')),
@@ -76,7 +57,7 @@ function campaignmonitor_form_alter($form_id, &$form) {
   
     $form['submit']['#weight'] = 100;
     
-    $form['#submit'] = array('campaignmonitor_form_submit' => array()) + (array)$form['#submit'];
+    $form['#submit'] = array('_campaignmonitor_form_submit' => array()) + (array)$form['#submit'];
   }
 }
 
@@ -84,43 +65,38 @@ function campaignmonitor_form_alter($form_id, &$form) {
  * Implementation of hook_block()
  */
 function campaignmonitor_block($op = 'list', $delta = 0, $edit = array()) {
-  if ($op == 'list') {
-    $blocks[0] = array('info' => t('Newsletter block to allow signup to newsletter for all.'),
-      'weight' => 0, 'enabled' => 0, 'region' => 'left');
-    return $blocks;
-  }
-  else if ($op == 'configure' && $delta == 0) {
-    /* $form['items'] = array(
-      '#type' => 'select',
-      '#title' => t('Number of items'),
-      '#default_value' => variable_get('XXX_block_items', 0),
-      '#options' => array('1', '2', '3'),
-    );
-    return $form;*/
-  }
-  else if ($op == 'save' && $delta == 0) {
-    /* variable_set('XXX_block_items', $edit['items']);*/
-  }
-  else if ($op == 'view') {
-    switch ($delta) {
-      case 0:
-        $block = array('subject' => t('Join Newsletter'),
-          'content' => campaignmonitor_signup_block());
-        break;
-      /* case 1:
-        $block = array('subject' => t('Title of block #2'),
-          'content' => "XXX");
-        break;*/
-    }
-    return $block;
+  switch ($op) {
+    case 'list':
+      $blocks[0] = array('info' => t('Join newsletter'));
+      return $blocks;
+    
+    case 'configure':
+    case 'save':
+      // no additional configuration options
+      break;
+    
+    case 'view':
+    default:
+      $block['subject'] = t('Join Newsletter');
+      $block['content'] = theme('campaignmonitor_block_content', $delta);
+      return $block;
   }
 }
 
-/*** END DRUPAL HOOKS ***/
+/**
+ * Implementation of hook_theme()
+ */
+function campaignmonitor_theme() {
+  return array(
+    'campaignmonitor_block_content' => array(
+      'template' => 'campaignmonitor-block-content',
+    ),
+  );
+}
 
-/******************************
- MODULE FUNCTIONS
-******************************/
+/* END DRUPAL HOOKS */
+
+/* MODULE FUNCTIONS */
 
 function campaignmonitor_admin() {
 
@@ -204,84 +180,6 @@ function campaignmonitor_admin() {
   return system_settings_form($form);
 }
 
-function campaignmonitor_signup_block() {
-  global $user;
-  $content = '';
-	$content .= drupal_get_form('campaignmonitor_general_form');
-  if (user_access('access archive')) {
-    $content .= l('Newsletter Archive', 'newsletter_archive');
-  }
-  return $content;
-}
-
-function campaignmonitor_user_page() {
-  return drupal_get_form('campaignmonitor_user_form');
-}
-
-function campaignmonitor_user_form() {
-  global $user;
-  // Replace api_key and list_id with your own details
-  $api_key = variable_get('campaignmonitor_api_key', '');
-  $list_id = variable_get('campaignmonitor_list_id', 0);
-
-  $email = $user->mail;
-
-  if (_campaignmonitor_is_subscribed($api_key, $list_id, $email, true)) {
-    $default = true;
-  }
-  else {
-    $default = false;
-  }
-
-  $form['subscribe_newsletter'] = array(
-    '#type'          => 'checkbox',
-    '#title'         => variable_get('campaignmonitor_user_pagedisplaytext', 'Newsletter'),
-    '#default_value' => $default,
-  );
-  $form['is_subscribed'] = array(
-    '#type'          => 'hidden',
-    '#default_value' => $default,
-  );
-  $form['submit'] = array('#type' => 'submit', '#value' => t('Save'));
-  return $form;
-}
-
-function campaignmonitor_newsletter_archive() {
-  $url = variable_get('campaignmonitor_pastcampaignurl', '');
-  if ($url == '') {
-    $content = '<p>The past campaign URL has not been set. Please set this in the administration pages.</p>';
-  }
-  else{
-    $content = '<script type="text/javascript" src="'. variable_get('campaignmonitor_PastCampaignURL', '') .'"></script>';
-  }
-  return $content;
-}
-
-function campaignmonitor_user_form_submit($form_id, $form_values)  {
-  global $user;
-  // Check if the profile module is installed. If it is, use the name element of the profile
-	if (module_exists("profile")) {
-  	profile_load_profile($user->uid);
-		$profile_name = $user->profile_name;
-	}
-  // Replace api_key and list_id with your own details
-  $api_key = variable_get('campaignmonitor_api_key', '');
-  $list_id = variable_get('campaignmonitor_list_id', 0);
-  
-  $name = $profile_name;
-  $email = $user->mail;
-
-  // any cases other then these are when things are unchanged
-  if ($form_values['subscribe_newsletter'] && !$form_values['is_subscribed']) {
-    // this is the case where they now want to be subscribed, and weren't before
-    _campaignmonitor_add_subscriber($api_key, $list_id, $name, $email);
-  }
-  else if (!$form_values['subscribe_newsletter'] && $form_values['is_subscribed']) {
-    // this is the case where they don't want to be subscribed, and were before
-    _campaignmonitor_remove_subscriber($api_key, $list_id, $email);
-  }
-}
-
 function campaignmonitor_general_form() {
   global $user;
 	$name = '';
@@ -336,7 +234,9 @@ function campaignmonitor_general_form() {
   return $form;
 }
 
-function campaignmonitor_general_form_submit($form_id, $form_values) {
+function campaignmonitor_general_form_submit($form, &$form_state) {
+  $form_values = $form_state['values'];
+  
   // Replace api_key and list_id with your own details
   $api_key = variable_get('campaignmonitor_api_key', '');
   $list_id = variable_get('campaignmonitor_list_id', 0);
@@ -355,7 +255,78 @@ function campaignmonitor_general_form_submit($form_id, $form_values) {
   }
 }
 
-function campaignmonitor_form_submit($form_id, $form_values) {
+function campaignmonitor_newsletter_archive() {
+  $url = variable_get('campaignmonitor_pastcampaignurl', '');
+  if ($url == '') {
+    $content = '<p>The past campaign URL has not been set. Please set this in the administration pages.</p>';
+  }
+  else{
+    $content = '<script type="text/javascript" src="'. variable_get('campaignmonitor_pastcampaignurl', '') .'"></script>';
+  }
+  return $content;
+}
+
+function campaignmonitor_user_page() {
+  return drupal_get_form('campaignmonitor_user_form');
+}
+
+function campaignmonitor_user_form() {
+  global $user;
+  // Replace api_key and list_id with your own details
+  $api_key = variable_get('campaignmonitor_api_key', '');
+  $list_id = variable_get('campaignmonitor_list_id', 0);
+
+  $email = $user->mail;
+
+  if (_campaignmonitor_is_subscribed($api_key, $list_id, $email, true)) {
+    $default = true;
+  }
+  else {
+    $default = false;
+  }
+
+  $form['subscribe_newsletter'] = array(
+    '#type'          => 'checkbox',
+    '#title'         => variable_get('campaignmonitor_user_pagedisplaytext', 'Newsletter'),
+    '#default_value' => $default,
+  );
+  $form['is_subscribed'] = array(
+    '#type'          => 'hidden',
+    '#default_value' => $default,
+  );
+  $form['submit'] = array('#type' => 'submit', '#value' => t('Save'));
+  return $form;
+}
+
+function campaignmonitor_user_form_submit($form, &$form_state)  {
+  $form_values = $form_state['values'];
+  global $user;
+  // Check if the profile module is installed. If it is, use the name element of the profile
+	if (module_exists("profile")) {
+  	profile_load_profile($user->uid);
+		$profile_name = $user->profile_name;
+	}
+  // Replace api_key and list_id with your own details
+  $api_key = variable_get('campaignmonitor_api_key', '');
+  $list_id = variable_get('campaignmonitor_list_id', 0);
+  
+  $name = $profile_name;
+  $email = $user->mail;
+
+  // any cases other then these are when things are unchanged
+  if ($form_values['subscribe_newsletter'] && !$form_values['is_subscribed']) {
+    // this is the case where they now want to be subscribed, and weren't before
+    _campaignmonitor_add_subscriber($api_key, $list_id, $name, $email);
+  }
+  else if (!$form_values['subscribe_newsletter'] && $form_values['is_subscribed']) {
+    // this is the case where they don't want to be subscribed, and were before
+    _campaignmonitor_remove_subscriber($api_key, $list_id, $email);
+  }
+}
+
+function _campaignmonitor_form_submit($form, &$form_state) {
+  $form_values = $form_state['values'];
+
   if ($form_values['subscribe_newsletter']) {
     if ('contact_mail_page' == $form_id) {
       $form_values['message'] .= "\n\n" . t('Subscribed to newsletter.');
@@ -372,11 +343,27 @@ function campaignmonitor_form_submit($form_id, $form_values) {
   }
 }
 
-/*** END MODULE FUNCTIONS ***/
+/* END MODULE FUNCTIONS */
 
-/******************************
- SOAP CALLS AND HELPERS
-******************************/
+/* TEMPLATE FUNCTIONS */
+
+/**
+ * Block template preprocessor
+ */
+function template_preprocess_campaignmonitor_block_content(&$variables) {
+  $variables['form'] = drupal_get_form('campaignmonitor_general_form');
+  
+  if (user_access('access archive')) {
+    $variables['archive_link'] =  l('Newsletter Archive', 'newsletter_archive');
+  }
+  else {
+    $variables['archive_link'] = '';
+  }
+}
+
+/* END TEMPLATE FUNCTIONS */
+
+/* SOAP CALLS AND HELPERS */
 
 function _campaignmonitor_create_client() {
   $client = new SoapClient(null,
@@ -507,4 +494,4 @@ function _campaignmonitor_get_subscriber($api_key, $list_id, $email, $show_error
   }
   return $retval;
 }
-/*** END SOAP CALLS AND HELPERS ***/
+/* END SOAP CALLS AND HELPERS */
