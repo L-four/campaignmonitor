@@ -555,12 +555,37 @@ function _campaignmonitor_get_subscriber($api_key, $list_id, $email, $show_error
 }
 
 function _campaignmonitor_get_lists($api_key, $client_id) {
-  // @todo: dummy function which returns lists
-  return array(
-	'listid1' => t('List 1'),
-	'listid2' => t('List 2'),
-	'listid3' => t('List 3'),
-  );
+  $retval = array();
+  $client = $client = _campaignmonitor_create_client();
+  
+  try{
+    //make soap call
+    $result = $client->__soapCall("Client.GetLists",
+        array(new SoapVar($api_key, XSD_STRING, null, null, "ApiKey", "http://api.createsend.com/api/"),
+          new SoapVar($client_id, XSD_STRING, null, null, "ClientID", "http://api.createsend.com/api/"),
+        ),
+        array("soapaction" => "http://api.createsend.com/api/Client.GetLists")
+    );
+    if ($result->Code != 0) {
+      watchdog('campaignmonitor', 'Code - %code, Message - %message', 
+	  			array('%code' => $result->Code, '%message' => $result->Message));
+	  if ($show_errors) {
+	    drupal_set_message('There is an error with the newsletter server. Please try again later.', 'error');
+	  }
+    }
+    else {
+      $lists = $result->List;
+	  foreach($lists as $list) {
+	  	$retval[$list->ListID] = $list->Name;
+	  }
+    }
+  } catch (SoapFault $e) {
+  	watchdog('campaignmonitor', 'There was an error getting client lists: %fault', array('%fault' => $e->faultstring), WATCHDOG_ERROR);
+    if ($show_errors) {
+      drupal_set_message("There is an error with the newsletter server. Please try again later.", 'error');
+    }
+  }
+  return $retval;
 }
 
 function _campaignmonitor_fetch_lists_submit($form, &$form_state) {
@@ -613,7 +638,7 @@ function campaignmonitor_lists_js() {
 		$output = theme('status_messages');
 	  }
 	  else {
-		$lists = _campaignmonitor_get_lists($form_state['post']['campaignmonitor_client_id'], $form_state['post']['campaignmonitor_api_key']);
+		$lists = _campaignmonitor_get_lists($form_state['post']['campaignmonitor_api_key'], $form_state['post']['campaignmonitor_client_id']);
 		$output = theme('status_messages') . '<div class="form-item"><div class="form-checkboxes">';
 		$i = 0;
 		foreach ($lists as $key => $value) {
