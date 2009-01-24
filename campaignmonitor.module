@@ -135,15 +135,14 @@ function campaignmonitor_admin() {
 	'#suffix' => '</div>',
   );
 
-  $form['campaignmonitor_lists_wrapper']['fetch_lists'] = array(
+  $form['campaignmonitor_lists_wrapper']['campaignmonitor_available_lists'] = array(
 	'#title' => t('Choose which lists you wish to make available'),
 	'#type' => 'radios',
 	'#options' => array(
 	  'all' => 'All lists for this client',
 	  'some' => 'I want to select specific lists for this client',
   	),
-	'#value' => t('Fetch all list for this client'),
-	'#button_type' => 'button',
+	'#default_value' => variable_get('campaignmonitor_available_lists', 'all'),
 	'#description' => t('Please enter Client ID and select which lists you wish to make available.'),
 	'#submit' => array('_campaignmonitor_fetch_lists_submit'), // if no JS
 	'#ahah' => array(
@@ -155,23 +154,24 @@ function campaignmonitor_admin() {
   );
 
   // Container for the list of lists
-  $form['campaignmonitor_lists_wrapper']['lists'] = array(
-	'#type' => 'checkboxes',
-	'#prefix' => '<div id="campaignmonitor-lists">',
-	'#value' => NULL,
-	'#options' => array(),
-	'#suffix' => '</div>',
-  );
-  
-  /*$form['campaignmonitor_list_id'] = array(
-    '#type' => 'textfield',
-    '#title' => t('List ID'),
-    '#default_value' => variable_get('campaignmonitor_list_id', ''),
-  '#required' => TRUE,
-    '#size' => 50,
-    '#maxlength' => 200,
-    '#description' => t("Your Campaign Monitor List ID.")
-  );*/
+  //watchdog('CM','lists: %lists', array('%lists' => print_r(variable_get('campaignmonitor_list_ids', array()),true)));
+  if(variable_get('campaignmonitor_available_lists', 'all') == 'some') {
+	$form['campaignmonitor_lists_wrapper']['campaignmonitor_list_ids'] = array(
+		'#type' => 'checkboxes',
+		'#prefix' => '<div id="campaignmonitor-lists">',
+		'#options' => _campaignmonitor_get_lists(variable_get('campaignmonitor_api_key',''), variable_get('campaignmonitor_client_id','')),
+		'#default_value' => variable_get('campaignmonitor_list_ids', array()),
+		'#suffix' => '</div>',
+	  );
+  } 
+  else {
+	  $form['campaignmonitor_lists_wrapper']['campaignmonitor_list_ids'] = array(
+		'#type' => 'checkboxes',
+		'#prefix' => '<div id="campaignmonitor-lists">',
+		'#options' => array(),
+		'#suffix' => '</div>',
+	  );
+  }
   
   $form['campaignmonitor_display_on'] = array(
     '#type' => 'checkboxes',
@@ -622,10 +622,10 @@ function campaignmonitor_lists_js() {
   $form = drupal_rebuild_form($form_id, $form_state, $args, $form_build_id);
 
   // Render the new output.
-  $lists_form = $form['campaignmonitor_lists_wrapper']['lists'];
+  $lists_form = $form['campaignmonitor_lists_wrapper']['campaignmonitor_list_ids'];
   unset($choice_form['#prefix'], $choice_form['#suffix']); // Prevent duplicate wrappers.
 
-  $lists_type = $form_state['post']['fetch_lists'];
+  $lists_type = $form_state['post']['campaignmonitor_available_lists'];
   switch ($lists_type) {
 	case 'all':
 	  $output = theme('status_messages') . t('All the lists from this client will be available to the users.');
@@ -639,15 +639,15 @@ function campaignmonitor_lists_js() {
 	  }
 	  else {
 		$lists = _campaignmonitor_get_lists($form_state['post']['campaignmonitor_api_key'], $form_state['post']['campaignmonitor_client_id']);
-		$output = theme('status_messages') . '<div class="form-item"><div class="form-checkboxes">';
+		$output = theme('status_messages') . '<div class="form-checkboxes">';
 		$i = 0;
 		foreach ($lists as $key => $value) {
-		  $output .= '<div id="edit-lists-' . $i . '-wrapper" class="form-item">'
-			. '<label class="option"><input type="checkbox" name="lists[' . $i . ']" value="'.$key.'" /></label> ' . $value
+		  $output .= '<div id="edit-lists-' . $key . '-wrapper" class="form-item">'
+			. '<label class="option"><input type="checkbox" name="campaignmonitor_list_ids[' . $key . ']" value="'.$key.'" /></label> ' . $value
 			. '</div>';
 		  $i++;
 		}
-		$output .= '</div></div>';
+		$output .= '</div>';
 	  }
 	  break;
 	}
