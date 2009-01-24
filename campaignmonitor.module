@@ -75,8 +75,7 @@ function campaignmonitor_form_alter(&$form, $form_state, $form_id) {
 function campaignmonitor_block($op = 'list', $delta = 0, $edit = array()) {
   switch ($op) {
     case 'list':
-      $blocks[0] = array('info' => t('Join newsletter'));
-      return $blocks;
+	  return campaignmonitor_block_list();
     
     case 'configure':
     case 'save':
@@ -85,7 +84,8 @@ function campaignmonitor_block($op = 'list', $delta = 0, $edit = array()) {
     
     case 'view':
     default:
-      $block['subject'] = t('Join Newsletter');
+	  $lists = _campaignmonitor_get_lists(variable_get('campaignmonitor_api_key',''), variable_get('campaignmonitor_client_id',''));
+	  $block['subject'] = $lists[$delta];
       $block['content'] = theme('campaignmonitor_block_content', $delta);
       return $block;
   }
@@ -98,6 +98,7 @@ function campaignmonitor_theme() {
   return array(
     'campaignmonitor_block_content' => array(
       'template' => 'campaignmonitor-block-content',
+	  'arguments' => array('list_id' => NULL),
     ),
   );
 }
@@ -105,6 +106,24 @@ function campaignmonitor_theme() {
 /* END DRUPAL HOOKS */
 
 /* MODULE FUNCTIONS */
+
+/**
+ * Returns a list of blocks in a form suitable for hook_block() when $op == list:
+ * A block is returned for each CampaignMonitor list chosen in admin settings
+ */
+function campaignmonitor_block_list() {
+  $api_key = variable_get('campaignmonitor_api_key', '');
+  $client_id = variable_get('campaignmonitor_client_id', '');
+  $list_ids = variable_get('campaignmonitor_list_ids', array());
+  $lists = _campaignmonitor_get_lists($api_key, $client_id); 
+  foreach ($list_ids as $list_id => $list) {
+  	// If list==0 that means that list is not chosen, don't create a block
+  	if($list != 0) {
+      $blocks[$list_id]['info'] = t('Subscribe to @list_name', array('@list_name' => $lists[$list_id]));
+	}
+  }
+  return $blocks;
+}
 
 function campaignmonitor_admin() {
 
@@ -154,7 +173,6 @@ function campaignmonitor_admin() {
   );
 
   // Container for the list of lists
-  //watchdog('CM','lists: %lists', array('%lists' => print_r(variable_get('campaignmonitor_list_ids', array()),true)));
   if(variable_get('campaignmonitor_available_lists', 'all') == 'some') {
 	$form['campaignmonitor_lists_wrapper']['campaignmonitor_list_ids'] = array(
 		'#type' => 'checkboxes',
@@ -220,10 +238,18 @@ function campaignmonitor_admin() {
     '#description' => t("If your server can't get through to the API, or the API server is down, this is the amount of time until the connection times out in seconds. Default is 15 seconds.")
   );
   
+  $form['#submit'][] = 'campaignmonitor_admin_submit';
+  
   return system_settings_form($form);
 }
 
-function campaignmonitor_general_form() {
+function campaignmonitor_admin_submit($form, &$form_state) {
+	watchdog('campaignmonitor', 'in admin submit');
+	// rebuild the block db table as we've possibly changed the blocks
+  _block_rehash();
+}
+
+function campaignmonitor_general_form(&$form_state, $list_id) {
   global $user;
 	$name = '';
 	$email = '';
@@ -237,11 +263,11 @@ function campaignmonitor_general_form() {
   if ($user->uid != 0) {
     $email = $user->mail;
     if (_campaignmonitor_is_subscribed(variable_get('campaignmonitor_api_key', ''), 
-		  variable_get('campaignmonitor_list_id', '') , $email)) {
+			$list_id, $email)) {
       $default = true;
 			// Also if subscribed get name
 			$subscriber = _campaignmonitor_get_subscriber(variable_get('campaignmonitor_api_key', ''),
-			  variable_get('campaignmonitor_list_id', ''), $email);
+			  $list_id, $email);
 			$name = $subscriber['name'];
     }
     else {
@@ -272,6 +298,11 @@ function campaignmonitor_general_form() {
     '#title'         => t('Unsubscribe'),
     '#default_value' => $default,
   );
+  
+  $form['list_id'] = array(
+    '#type' => 'hidden',
+    '#value' => $list_id,
+  );
 
   $form['submit'] = array('#type' => 'submit', '#value' => t('Submit'));
   return $form;
@@ -280,10 +311,10 @@ function campaignmonitor_general_form() {
 function campaignmonitor_general_form_submit($form, &$form_state) {
   $form_values = $form_state['values'];
   
-  // Replace api_key and list_id with your own details
+  // Replace api_key with your own details
   $api_key = variable_get('campaignmonitor_api_key', '');
-  $list_id = variable_get('campaignmonitor_list_id', '');
   
+  $list_id = $form_values['list_id'];
   $name = $form_values['name'];
   $email = $form_values['email'];
 
@@ -394,7 +425,7 @@ function _campaignmonitor_form_submit($form, &$form_state) {
  * Block template preprocessor
  */
 function template_preprocess_campaignmonitor_block_content(&$variables) {
-  $variables['form'] = drupal_get_form('campaignmonitor_general_form');
+  $variables['form'] = drupal_get_form('campaignmonitor_general_form', $variables['list_id']);
   
   if (user_access('access archive')) {
     $variables['archive_link'] =  l('Newsletter Archive', 'newsletter_archive');
