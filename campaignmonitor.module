@@ -56,16 +56,52 @@ function campaignmonitor_form_alter(&$form, $form_state, $form_id) {
   $display_on = variable_get('campaignmonitor_display_on', array());
   
   if (('contact_mail_page' == $form_id && $display_on['contact'] == 'contact') || ('user_register' == $form_id && $display_on['registration'] == 'registration') && user_access('join newsletter')) {
-    $form['subscribe_newsletter'] = array(
-      '#type'          => 'checkbox',
-      '#title'         => t(variable_get('campaignmonitor_checkboxdisplaytext', 'Join our Newsletter?')),
-      '#weight'        => 99,
-      '#default_value' => 1,
-    );
+    $api_key = variable_get('campaignmonitor_api_key', '');
+  	$client_id = variable_get('campaignmonitor_client_id', '');
+		$list_ids = variable_get('campaignmonitor_list_ids', array());
+  	$lists = _campaignmonitor_get_lists($api_key, $client_id); 
+		
+		$options = array();
+		$default_values = array();
+		foreach ($list_ids as $list_id => $list) {
+			if($list != '0') {
+				$default_values[] = $list_id;
+				$options[$list_id] = $lists[$list_id];
+			}
+		}
+		
+		$form['subscribe_newsletter'] = array(
+		    '#type'          => 'checkboxes',
+				'#title'         => t(variable_get('campaignmonitor_checkboxdisplaytext', 'Available Newsletters')),
+				'#options'       => $options,
+		    '#default_value' => $default_values,
+				'#weight'        => 99,
+		);
   
     $form['submit']['#weight'] = 100;
-    
-    $form['#submit'] = array('_campaignmonitor_form_submit' => array()) + (array)$form['#submit'];
+		
+		$form['#submit'][] = '_campaignmonitor_altered_form_submit';
+  }
+}
+
+function _campaignmonitor_altered_form_submit($form, &$form_state) {
+  $form_values = $form_state['values'];
+	$listids = $form_values['subscribe_newsletter'];
+
+  if (count($listids) > 0) {
+    if ('contact_mail_page' == $form_id) {
+      $form_values['message'] .= "\n\n" . t('Subscribed to newsletter(s).');
+    }
+
+    // Replace api_key and list_id with your own details
+    $api_key = variable_get('campaignmonitor_api_key', '');
+		
+    $email = $form_values['mail'];
+    $name = $form_values['name'];
+		
+		foreach($listids as $list_id) {
+ 			_campaignmonitor_add_subscriber($api_key, $list_id, $name, $email);
+		}
   }
 }
 
@@ -248,7 +284,7 @@ function campaignmonitor_admin_submit($form, &$form_state) {
   _block_rehash();
 }
 
-function campaignmonitor_general_form(&$form_state, $list_id) {
+function campaignmonitor_subscribe_form(&$form_state, $list_id) {
   global $user;
 	$name = '';
 	$email = '';
@@ -307,7 +343,7 @@ function campaignmonitor_general_form(&$form_state, $list_id) {
   return $form;
 }
 
-function campaignmonitor_general_form_submit($form, &$form_state) {
+function campaignmonitor_subscribe_form_submit($form, &$form_state) {
   $form_values = $form_state['values'];
   
   // Replace api_key with your own details
@@ -418,25 +454,6 @@ function campaignmonitor_user_form_submit($form, &$form_state)  {
 	}
 }
 
-function _campaignmonitor_form_submit($form, &$form_state) {
-  $form_values = $form_state['values'];
-
-  if ($form_values['subscribe_newsletter']) {
-    if ('contact_mail_page' == $form_id) {
-      $form_values['message'] .= "\n\n" . t('Subscribed to newsletter.');
-    }
-
-    // Replace api_key and list_id with your own details
-    $api_key = variable_get('campaignmonitor_api_key', '');
-    $list_id = variable_get('campaignmonitor_list_id', '');
-  
-    $email = $form_values['mail'];
-    $name = $form_values['name'];
-
- 		_campaignmonitor_add_subscriber($api_key, $list_id, $name, $email);
-  }
-}
-
 /* END MODULE FUNCTIONS */
 
 /* TEMPLATE FUNCTIONS */
@@ -445,7 +462,7 @@ function _campaignmonitor_form_submit($form, &$form_state) {
  * Block template preprocessor
  */
 function template_preprocess_campaignmonitor_block_content(&$variables) {
-  $variables['form'] = drupal_get_form('campaignmonitor_general_form', $variables['list_id']);
+  $variables['form'] = drupal_get_form('campaignmonitor_subscribe_form', $variables['list_id']);
   
   if (user_access('access archive')) {
     $variables['archive_link'] =  l('Newsletter Archive', 'newsletter_archive');
