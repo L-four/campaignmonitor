@@ -58,7 +58,7 @@ function campaignmonitor_form_alter(&$form, $form_state, $form_id) {
   if (('contact_mail_page' == $form_id && $display_on['contact'] == 'contact') || ('user_register' == $form_id && $display_on['registration'] == 'registration') && user_access('join newsletter')) {
     $api_key = variable_get('campaignmonitor_api_key', '');
   	$client_id = variable_get('campaignmonitor_client_id', '');
-		$list_ids = variable_get('campaignmonitor_list_ids', array());
+		$list_ids = campaignmonitor_get_available_lists();
   	$lists = _campaignmonitor_get_lists($api_key, $client_id); 
 		
 		$options = array();
@@ -150,11 +150,12 @@ function campaignmonitor_theme() {
 function campaignmonitor_block_list() {
   $api_key = variable_get('campaignmonitor_api_key', '');
   $client_id = variable_get('campaignmonitor_client_id', '');
-  $list_ids = variable_get('campaignmonitor_list_ids', array());
+  $list_ids = campaignmonitor_get_available_lists();
+	watchdog('campaign monitor','lists: %lists',array('%lists' => print_r($list_ids,true)));
   $lists = _campaignmonitor_get_lists($api_key, $client_id); 
   foreach ($list_ids as $list_id => $list) {
   	// If list==0 that means that list is not chosen, don't create a block
-  	if($list != 0) {
+  	if($list != '0') {
       $blocks[$list_id]['info'] = t('Subscribe to @list_name', array('@list_name' => $lists[$list_id]));
 		}
   }
@@ -384,7 +385,7 @@ function campaignmonitor_user_form() {
   // Replace api_key and list_id with your own details
   $api_key = variable_get('campaignmonitor_api_key', '');
   $client_id = variable_get('campaignmonitor_client_id', '');
-	$list_ids = variable_get('campaignmonitor_list_ids', array());
+	$list_ids = campaignmonitor_get_available_lists();
   $lists = _campaignmonitor_get_lists($api_key, $client_id); 
   
   $email = $user->mail;
@@ -432,7 +433,7 @@ function campaignmonitor_user_form_submit($form, &$form_state)  {
   $api_key = variable_get('campaignmonitor_api_key', '');
   $client_id = variable_get('campaignmonitor_client_id', '');
 	$lists = _campaignmonitor_get_lists($api_key, $client_id);
-	$chosen_lists = variable_get('campaignmonitor_list_ids',array());
+	$chosen_lists = campaignmonitor_get_available_lists();
 	$subscribe = $form_values['subscribe_newsletter'];
   
   $name = $profile_name;
@@ -451,6 +452,24 @@ function campaignmonitor_user_form_submit($form, &$form_state)  {
 		    _campaignmonitor_remove_subscriber($api_key, $list_id, $email);
 		  }
 		}
+	}
+}
+
+function campaignmonitor_get_available_lists() {
+	$list_ids = variable_get('campaignmonitor_list_ids', array());
+	$toggle = variable_get('campaignmonitor_available_lists', 'all');
+	if($toggle == 'some') {
+		return $list_ids;
+	}
+	else {
+		$api_key = variable_get('campaignmonitor_api_key', '');
+  	$client_id = variable_get('campaignmonitor_client_id', '');
+		$ret = array();
+		$lists = _campaignmonitor_get_lists($api_key, $client_id);
+		foreach($lists as $list_id => $list_name) {
+			$ret[$list_id] = $list_id;
+		}
+		return $ret;
 	}
 }
 
