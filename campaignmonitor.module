@@ -347,26 +347,39 @@ function campaignmonitor_user_form() {
   global $user;
   // Replace api_key and list_id with your own details
   $api_key = variable_get('campaignmonitor_api_key', '');
-  $list_id = variable_get('campaignmonitor_list_id', '');
-
+  $client_id = variable_get('campaignmonitor_client_id', '');
+	$list_ids = variable_get('campaignmonitor_list_ids', array());
+  $lists = _campaignmonitor_get_lists($api_key, $client_id); 
+  
   $email = $user->mail;
+	
+	$options = array();
+	$default_values = array();
 
-  if (_campaignmonitor_is_subscribed($api_key, $list_id, $email, true)) {
-    $default = true;
-  }
-  else {
-    $default = false;
-  }
-
-  $form['subscribe_newsletter'] = array(
-    '#type'          => 'checkbox',
-    '#title'         => variable_get('campaignmonitor_user_pagedisplaytext', 'Newsletter'),
-    '#default_value' => $default,
-  );
-  $form['is_subscribed'] = array(
-    '#type'          => 'hidden',
-    '#default_value' => $default,
-  );
+	foreach ($list_ids as $list_id => $list) {
+		if($list != '0') {
+			if (_campaignmonitor_is_subscribed($api_key, $list_id, $email, true)) {
+		    $default = true;
+				$default_values[] = $list_id;
+		  }
+		  else {
+		    $default = false;
+		  }
+			$options[$list_id] = $lists[$list_id];
+		  
+		  $form['is_subscribed_'.$list_id] = array(
+		    '#type'          => 'hidden',
+		    '#default_value' => $default,
+		  );
+		}
+	}
+	$form['subscribe_newsletter'] = array(
+		    '#type'          => 'checkboxes',
+				'#title'         => t('Available newsletters'),
+				'#options'       => $options,
+		    '#default_value' => $default_values,
+		  );
+	
   $form['submit'] = array('#type' => 'submit', '#value' => t('Save'));
   return $form;
 }
@@ -379,22 +392,30 @@ function campaignmonitor_user_form_submit($form, &$form_state)  {
   	profile_load_profile($user->uid);
 		$profile_name = $user->profile_name;
 	}
-  // Replace api_key and list_id with your own details
+	
   $api_key = variable_get('campaignmonitor_api_key', '');
-  $list_id = variable_get('campaignmonitor_list_id', '');
+  $client_id = variable_get('campaignmonitor_client_id', '');
+	$lists = _campaignmonitor_get_lists($api_key, $client_id);
+	$chosen_lists = variable_get('campaignmonitor_list_ids',array());
+	$subscribe = $form_values['subscribe_newsletter'];
   
   $name = $profile_name;
   $email = $user->mail;
 
-  // any cases other then these are when things are unchanged
-  if ($form_values['subscribe_newsletter'] && !$form_values['is_subscribed']) {
-    // this is the case where they now want to be subscribed, and weren't before
-    _campaignmonitor_add_subscriber($api_key, $list_id, $name, $email);
-  }
-  else if (!$form_values['subscribe_newsletter'] && $form_values['is_subscribed']) {
-    // this is the case where they don't want to be subscribed, and were before
-    _campaignmonitor_remove_subscriber($api_key, $list_id, $email);
-  }
+	foreach($chosen_lists as $list_id => $listvalue) {
+		if($listvalue != '0') {
+			// if subscribed, add if not already subscribed
+		  if ($subscribe[$list_id] != null && !$form_values['is_subscribed_'.$list_id]) {
+		  	watchdog('campaignmonitor','being subscribed');
+		    _campaignmonitor_add_subscriber($api_key, $list_id, $name, $email);
+		  }
+			// if not subscribed, and was subscribed before
+		  else if ($subscribe[$list_id] == null && $form_values['is_subscribed_'.$list_id]) {
+		  	watchdog('campaignmonitor','being unsubscribed');
+		    _campaignmonitor_remove_subscriber($api_key, $list_id, $email);
+		  }
+		}
+	}
 }
 
 function _campaignmonitor_form_submit($form, &$form_state) {
