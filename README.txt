@@ -1,7 +1,7 @@
-{\rtf1\ansi\ansicpg1252\cocoartf949\cocoasubrtf350
+{\rtf1\ansi\ansicpg1252\cocoartf949\cocoasubrtf430
 {\fonttbl\f0\fswiss\fcharset0 Helvetica;}
 {\colortbl;\red255\green255\blue255;}
-\paperw11900\paperh16840\margl1440\margr1440\vieww9000\viewh8400\viewkind0
+\paperw11900\paperh16840\margl1440\margr1440\vieww19920\viewh15780\viewkind0
 \pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\ql\qnatural\pardirnatural
 
 \f0\fs24 \cf0 $Id$\
@@ -28,8 +28,8 @@ This module was developed by T-Rex Art: http://www.trexart.com.au\
 Installation\
 ------------\
 \
-- At this time the module uses the built in libraries of PHP5 for he SOAP calls\
-so it is not available for use with PHP4\
+- At this time the module uses the built in libraries of PHP5 for he SOAP calls so it is not available for use with PHP4. If you find there are errors, make sure that your PHP installation \
+has SOAP enabled.\
 \
 - Create a folder in your modules directory called campaignmonitor and put the module's files in this directory\
 \
@@ -55,8 +55,6 @@ Future plans\
 -----------------\
 \
  I hope to integrate more of the API into this module in the future. \
-\
-- First on the list is to be able to have more then one list setup so you can have multiple blocks.\
 \
 - Custom fields is also a goal.\
 \
