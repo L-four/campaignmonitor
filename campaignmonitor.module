@@ -662,10 +662,18 @@ function _campaignmonitor_get_lists($api_key, $client_id) {
 		  }
     }
     else {
-      $lists = $result->List;
-		  foreach($lists as $list) {
-		  	$retval[$list->ListID] = $list->Name;
-		  }
+    	if (!empty($result->List)) {
+				$lists = $result->List;
+				// if there is only one list
+				if (!empty($lists->ListID)) {
+					$retval[$lists->ListID] = $lists->Name;
+				}
+				else {
+					foreach($lists as $list) {
+						$retval[$list->ListID] = $list->Name;
+					}
+				}
+			}
     }
   } catch (SoapFault $e) {
   	watchdog('campaignmonitor', 'There was an error getting client lists: %fault', array('%fault' => $e->faultstring), WATCHDOG_ERROR);
