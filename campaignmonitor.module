@@ -251,7 +251,7 @@ function campaignmonitor_admin() {
   $form['campaignmonitor_userpagedisplaytext'] = array(
     '#type' => 'textfield',
     '#title' => t('Display Text for User Page'),
-    '#default_value' => variable_get('campaignmonitor_userpagedisplaytext', 'Newsletter'),
+    '#default_value' => variable_get('campaignmonitor_userpagedisplaytext', 'Available Newsletters'),
     '#size' => 50,
     '#maxlength' => 50,
     '#description' => t("This text will display next to the checkbox on the user profile page.")
@@ -412,7 +412,7 @@ function campaignmonitor_user_form() {
 	}
 	$form['subscribe_newsletter'] = array(
 		    '#type'          => 'checkboxes',
-				'#title'         => t('Available newsletters'),
+				'#title'         => variable_get('campaignmonitor_userpagedisplaytext', 'Available Newsletters'),
 				'#options'       => $options,
 		    '#default_value' => $default_values,
 		  );
