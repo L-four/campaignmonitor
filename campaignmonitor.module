@@ -55,7 +55,7 @@ function campaignmonitor_menu() {
 function campaignmonitor_form_alter(&$form, $form_state, $form_id) {
   $display_on = variable_get('campaignmonitor_display_on', array());
   
-  if (('contact_mail_page' == $form_id && $display_on['contact'] == 'contact') || ('user_register' == $form_id && $display_on['registration'] == 'registration') && user_access('join newsletter')) {
+  if (('contact_mail_page' == $form_id && $display_on['contact'] != '0') || ('user_register' == $form_id && $display_on['registration'] != '0') && user_access('join newsletter')) {
     $api_key = variable_get('campaignmonitor_api_key', '');
   	$client_id = variable_get('campaignmonitor_client_id', '');
 		$list_ids = campaignmonitor_get_available_lists();
