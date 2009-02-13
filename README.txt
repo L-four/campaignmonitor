@@ -40,15 +40,17 @@ has SOAP enabled.\
 Configuration\
 -----------------\
 \
-Make sure to have your API Key, Client Id and List id for the list you wish to use.\
+Make sure to have your API Key and Client Id.\
 To retrieve these values follow the instructions here:\
 http://www.campaignmonitor.com/api/required.aspx\
 \
 This module has been updated to work with the new combined Campaign Monitor and MailBuild service, so please make sure you have updated your API keys if needed.\
 \
-Enter these into the module's settings page.\
+Enter these into the module's settings page. You will then be able to choose if you wish all lists to be available on the site, or if you want to just select certain lists to display on the site.\
 \
 It is encouraged for you to spend some time setting up your campaign monitor account before diving in with this module.\
+\
+NOTE: There is a setting for each list in Campaign Monitor where if you unsubscribe from one list, you are unsubscribed from all lists. The default for this is to unsubscribe from all. This makes it so if in the 'My Newsletters' area, a user unsubscribes from one list, they will be unsubscribed from all. I recommend turning off this feature in the Campaign Monitor admin.\
 \
 -----------------\
 Future plans\
@@ -56,8 +58,6 @@ Future plans\
 \
  I hope to integrate more of the API into this module in the future. \
 \
-- Custom fields is also a goal.\
-\
-- I might, but not sure about integrating the actual reports, the tools on campaign monitor are great, so it would be pointless to try to copy these. Maybe have an integration of the login so that clients can login and be directed to the reports page with the username and password already filled in.\
+- Custom fields retrieved automatically.\
 \
 - I will gladly take any suggestions.}
