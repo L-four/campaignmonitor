@@ -1,12 +1,23 @@
 <?php
 /* $Id$ */
 
+/**
+ * @file
+ * Module that plugs in Campaign Monitor functionality to your Drupal web site.
+ * For Campaign Monitor information see: http://www.campaignmonitor.com/
+ *
+ * This module uses the CampaignMonitor PHP API. For all credit and information
+ * about this PHP API see By ssherriff: http://code.google.com/p/campaignmonitor-php/
+ */
+ 
+ @require_once(drupal_get_path('module', 'campaignmonitor') .'/lib/CMBase.php');
+
 /* DRUPAL HOOKS */
 /* hook_help */
 function campaignmonitor_help($path, $arg) {
   switch ($path) {
     case 'admin/settings/campaignmonitor':
-      return '<p>' . t('Use your API key and other keys to have users register for a mailing list setup through Campaign Monitor.') . '</p>';
+      return '<p>'. t('Use your API key and other keys to have users register for a mailing list setup through Campaign Monitor.') . '</p>';
   }
 }
 
@@ -19,7 +30,6 @@ function campaignmonitor_perm() {
 /* hook_menu */
 function campaignmonitor_menu() {
   $items = array();
-  
   $items['admin/settings/campaignmonitor'] = array(
     'title' => t('Campaign Monitor'),
     'description' => t('Setup Campaign Monitor values.'),
@@ -32,7 +42,6 @@ function campaignmonitor_menu() {
     'page callback' => 'campaignmonitor_newsletter_archive',
     'access arguments' => array('access archive'),
     'type' => MENU_SUGGESTED_ITEM);
-	  
   $items['user/%user/newsletters'] = array(
     'title' => t('My Newsletters'),
     'page callback' => 'campaignmonitor_user_page',
@@ -54,7 +63,6 @@ function campaignmonitor_menu() {
 /* hook_form_alter */
 function campaignmonitor_form_alter(&$form, $form_state, $form_id) {
   $display_on = variable_get('campaignmonitor_display_on', array());
-  
   if (('contact_mail_page' == $form_id && $display_on['contact'] != '0') || ('user_register' == $form_id && $display_on['registration'] != '0') && user_access('join newsletter')) {
     $api_key = variable_get('campaignmonitor_api_key', '');
   	$client_id = variable_get('campaignmonitor_client_id', '');
@@ -151,7 +159,7 @@ function campaignmonitor_block_list() {
   $api_key = variable_get('campaignmonitor_api_key', '');
   $client_id = variable_get('campaignmonitor_client_id', '');
   $list_ids = campaignmonitor_get_available_lists();
-	watchdog('campaign monitor','lists: %lists',array('%lists' => print_r($list_ids,true)));
+	//watchdog('campaign monitor','lists: %lists',array('%lists' => print_r($list_ids,true)));
   $lists = _campaignmonitor_get_lists($api_key, $client_id); 
   foreach ($list_ids as $list_id => $list) {
   	// If list==0 that means that list is not chosen, don't create a block
@@ -171,7 +179,7 @@ function campaignmonitor_admin() {
     '#required' => TRUE,
     '#size' => 50,
     '#maxlength' => 200,
-    '#description' => t("Your Campaign Monitor API Key.")
+    '#description' => t('Your Campaign Monitor API Key. See <a href="http://www.campaignmonitor.com/api/required/">documentation</a>.')
   );
   
   $form['campaignmonitor_client_id'] = array(
@@ -181,7 +189,7 @@ function campaignmonitor_admin() {
     '#required' => TRUE,
     '#size' => 50,
     '#maxlength' => 200,
-    '#description' => t("Your Campaign Monitor Client ID.")
+    '#description' => t('Your Campaign Monitor Client ID. See <a href="http://www.campaignmonitor.com/api/required/">documentation</a>.')
   );
   
   // Add a wrapper for the lists and selection radio buttons.
@@ -443,12 +451,12 @@ function campaignmonitor_user_form_submit($form, &$form_state)  {
 		if($listvalue != '0') {
 			// if subscribed, add if not already subscribed
 		  if ($subscribe[$list_id] != null && !$form_values['is_subscribed_'.$list_id]) {
-		  	watchdog('campaignmonitor','being subscribed');
+		  	//watchdog('campaignmonitor','being subscribed');
 		    _campaignmonitor_add_subscriber($api_key, $list_id, $name, $email);
 		  }
 			// if not subscribed, and was subscribed before
 		  else if ($subscribe[$list_id] == null && $form_values['is_subscribed_'.$list_id]) {
-		  	watchdog('campaignmonitor','being unsubscribed');
+		  	//watchdog('campaignmonitor','being unsubscribed');
 		    _campaignmonitor_remove_subscriber($api_key, $list_id, $email);
 		  }
 		}
@@ -495,191 +503,108 @@ function template_preprocess_campaignmonitor_block_content(&$variables) {
 
 /* SOAP CALLS AND HELPERS */
 
-function _campaignmonitor_create_client() {
-  $client = new SoapClient(null,
-    array("location" => "http://api.createsend.com/api/api.asmx",
-      "uri"  => "http://api.createsend.com/api/",
-      "style"  => SOAP_RPC,
-      "use"  => SOAP_LITERAL,
-      "trace"  => true,
-	  	"connection_timeout" => (int)variable_get('campaignmonitor_connection_timeout', '15'),
-    )
-	);
-	return $client;
-}
-
-function _campaignmonitor_is_subscribed($api_key, $list_id, $email, $show_errors = false) {
-  $retval = false;
-  $client = _campaignmonitor_create_client();
+function _campaignmonitor_is_subscribed($api_key, $list_id, $email, $show_errors = FALSE) {
+  $retval = FALSE;
+  $cm = new CampaignMonitor($api_key, $client_id, $campaign_id, $list_id );
   
-  try{
-    //make soap call
-    $result = $client->__soapCall("Subscribers.GetIsSubscribed",
-        array(new SoapVar($api_key, XSD_STRING, null, null, "ApiKey", "http://api.createsend.com/api/"),
-          new SoapVar($list_id, XSD_STRING, null, null, "ListID", "http://api.createsend.com/api/"),
-          new SoapVar($email, XSD_STRING, null, null, "Email", "http://api.createsend.com/api/"),
-          new SoapVar($name, XSD_STRING, null, null, "Name", "http://api.createsend.com/api/"),
-        ),
-        array("soapaction" => "http://api.createsend.com/api/Subscribers.GetIsSubscribed")
-    );
-		if ($result->Code != 0) {
-	      watchdog('campaignmonitor', 'Code - %code, Message - %message', 
-		  			array('%code' => $result->Code, '%message' => $result->Message));
-		  if ($show_errors) {
-		    drupal_set_message('There is an error with the newsletter server. Please try again later.', 'error');
-		  }
-	  }
-	  else if ($result == 'False') {
-	    $retval = false;
-	  }
-	  else if ($result == 'True') {
-	    $retval = true;
-	  }
-  } catch (SoapFault $e) {
-  	watchdog('campaignmonitor', 'There was an error checking if joined to newsletter: %fault', array('%fault' => $e->faultstring), WATCHDOG_ERROR);
+  $result = $cm->subscribersGetIsSubscribed($email, $list_id);
+
+  if ($result['anyType']['Code'] != 0) {
+	  watchdog('campaignmonitor', 'Code - %code, Message - %message', 
+		  			array('%code' => $result['anyType']['Code'], '%message' => $result['anyType']['Message']));
+    $retval = FALSE;
     if ($show_errors) {
-      drupal_set_message('There is an error with the newsletter server. Please try again later.', 'error');
+      drupal_set_message("There is an error with the newsletter server. Please try again later.", 'error');
     }
-    $retval = false;
+  } 
+  else if ($result['anyType'] == 'False') {
+    $retval = FALSE;
+  }
+  else if ($result['anyType'] == 'True') {
+    $retval = TRUE;
   }
   return $retval;
 }
 
-function _campaignmonitor_add_subscriber($api_key, $list_id, $name, $email, $show_errors = false) {
-  $client = $client = _campaignmonitor_create_client();
+function _campaignmonitor_add_subscriber($api_key, $list_id, $name, $email, $show_errors = FALSE) {
+  $cm = new CampaignMonitor($api_key, $client_id, $campaign_id, $list_id );
 
-  try{
-    //make soap call
-    $result = $client->__soapCall("Subscriber.AddAndResubscribe",
-      array(new SoapVar($api_key, XSD_STRING, null, null, "ApiKey", "http://api.createsend.com/api/"),
-        new SoapVar($list_id, XSD_STRING, null, null, "ListID", "http://api.createsend.com/api/"),
-        new SoapVar($email, XSD_STRING, null, null, "Email", "http://api.createsend.com/api/"),
-        new SoapVar($name, XSD_STRING, null, null, "Name", "http://api.createsend.com/api/"),
-      ),
-      array("soapaction"  => "http://api.createsend.com/api/Subscriber.AddAndResubscribe")
-    );
-	
-		if ($result->Code != 0) {
-      watchdog('campaignmonitor', 'Code - %code, Message - %message', 
-	  			array('%code' => $result->Code, '%message' => $result->Message));
-		  if ($show_errors) {
-		    drupal_set_message('There is an error with the newsletter server. Please try again later.', 'error');
-		  }
-    }
-    else {
-      drupal_set_message("You have successfully been added.", 'status');
-    }
-  } catch (SoapFault $e) {
-  	watchdog('campaignmonitor', 'There was an error checking if joined to newsletter: %fault', array('%fault' => $e->faultstring), WATCHDOG_ERROR);
-    if ($show_errors) {
-      drupal_set_message("There is an error with the newsletter server. Please try again later.", 'error');
-    }
+  $result = $cm->subscriberAddAndResubscribe($email, $name);
+  if ($result['anyType']['Code'] != 0) {
+	  watchdog('campaignmonitor', 'Code - %code, Message - %message', 
+		  			array('%code' => $result['anyType']['Code'], '%message' => $result['anyType']['Message']));
+    drupal_set_message("There was an error joining to newsletter.", 'error');
+  }
+  else {
+    drupal_set_message("You have successfully been added.", 'status');
   }
 }
 
-function _campaignmonitor_remove_subscriber($api_key, $list_id, $email, $show_errors = false) {
-  $client = $client = _campaignmonitor_create_client();
+function _campaignmonitor_remove_subscriber($api_key, $list_id, $email, $show_errors = FALSE) {
+  $cm = new CampaignMonitor($api_key, $client_id, $campaign_id, $list_id );
 
-  try{
-    //make soap call
-    $result = $client->__soapCall("Subscriber.Unsubscribe",
-      array(
-        new SoapVar($api_key, XSD_STRING, null, null, "ApiKey", "http://api.createsend.com/api/"),
-        new SoapVar($list_id, XSD_STRING, null, null, "ListID", "http://api.createsend.com/api/"),
-        new SoapVar($email, XSD_STRING, null, null, "Email", "http://api.createsend.com/api/"),
-        new SoapVar($name, XSD_STRING, null, null, "Name", "http://api.createsend.com/api/"),
-      ),
-      array("soapaction" => "http://api.createsend.com/api/Subscriber.Unsubscribe")
-    );
-	
-		if ($result->Code != 0) {
-      watchdog('campaignmonitor', 'Code - %code, Message - %message', 
-	  			array('%code' => $result->Code, '%message' => $result->Message));
-		  if ($show_errors) {
-		    drupal_set_message('There is an error with the newsletter server. Please try again later.', 'error');
-		  }
-    }
-    else {
-      drupal_set_message("You have successfully been unsubscribed.", 'status');
-    }
-  } catch (SoapFault $e) {
-  	watchdog('campaignmonitor', 'There was an error checking if joined to newsletter: %fault', array('%fault' => $e->faultstring), WATCHDOG_ERROR);
-    if ($show_errors) {
-      drupal_set_message("There is an error with the newsletter server. Please try again later.", 'error');
-    }
+  $result = $cm->subscriberUnsubscribe($email);
+  if ($result['Result']['Code'] == 0) {
+    drupal_set_message("You have successfully been unsubscribed.", 'status');
+  }
+  else {
+	  watchdog('campaignmonitor', 'Code - %code, Message - %message', 
+		  			array('%code' => $result['anyType']['Code'], '%message' => $result['anyType']['Message']));
+    drupal_set_message("There was an error unsubscribing from newsletter.", 'error');
   }
 }
 
-function _campaignmonitor_get_subscriber($api_key, $list_id, $email, $show_errors = false) {
+function _campaignmonitor_get_subscriber($api_key, $list_id, $email, $show_errors = FALSE) {
   $retval = array("name" => '', "email" => $email);
-  $client = $client = _campaignmonitor_create_client();
-  
-  try{
-    //make soap call
-    $result = $client->__soapCall("Subscribers.GetSingleSubscriber",
-        array(new SoapVar($api_key, XSD_STRING, null, null, "ApiKey", "http://api.createsend.com/api/"),
-          new SoapVar($list_id, XSD_STRING, null, null, "ListID", "http://api.createsend.com/api/"),
-          new SoapVar($email, XSD_STRING, null, null, "EmailAddress", "http://api.createsend.com/api/"),
-        ),
-        array("soapaction" => "http://api.createsend.com/api/Subscribers.GetSingleSubscriber")
-    );
-    if ($result->Code != 0) {
-      watchdog('campaignmonitor', 'Code - %code, Message - %message', 
-	  			array('%code' => $result->Code, '%message' => $result->Message));
-		  if ($show_errors) {
-		    drupal_set_message('There is an error with the newsletter server. Please try again later.', 'error');
-		  }
-    }
-    else {
-      $retval['name'] = $result->Name;
-    }
-  } catch (SoapFault $e) {
-  	watchdog('campaignmonitor', 'There was an error checking if joined to newsletter: %fault', array('%fault' => $e->faultstring), WATCHDOG_ERROR);
+  $cm = new CampaignMonitor($api_key, $client_id, $campaign_id, $list_id );
+
+  $result = $cm->makeCall( 'Subscribers.GetSingleSubscriber', array(
+                 'params' => array(
+                 'ListID' => $list_id,
+                 'EmailAddress' => $email)
+                  )
+                );
+
+  if ($result['anyType']['Code'] != 0) {
+	  watchdog('campaignmonitor', 'Code - %code, Message - %message', 
+		  			array('%code' => $result['anyType']['Code'], '%message' => $result['anyType']['Message']));
     if ($show_errors) {
       drupal_set_message("There is an error with the newsletter server. Please try again later.", 'error');
     }
+  }
+  else {
+    $retval['name'] = $result['anyType']['Name'];
   }
   return $retval;
 }
 
 function _campaignmonitor_get_lists($api_key, $client_id) {
-  $retval = array();
-  $client = $client = _campaignmonitor_create_client();
-  
-  try{
-    //make soap call
-    $result = $client->__soapCall("Client.GetLists",
-        array(new SoapVar($api_key, XSD_STRING, null, null, "ApiKey", "http://api.createsend.com/api/"),
-          new SoapVar($client_id, XSD_STRING, null, null, "ClientID", "http://api.createsend.com/api/"),
-        ),
-        array("soapaction" => "http://api.createsend.com/api/Client.GetLists")
-    );
-    if ($result->Code != 0) {
-      watchdog('campaignmonitor', 'Code - %code, Message - %message', 
-	  			array('%code' => $result->Code, '%message' => $result->Message));
-		  if ($show_errors) {
-		    drupal_set_message('There is an error with the newsletter server. Please try again later.', 'error');
-		  }
-    }
-    else {
-    	if (!empty($result->List)) {
-				$lists = $result->List;
-				// if there is only one list
-				if (!empty($lists->ListID)) {
-					$retval[$lists->ListID] = $lists->Name;
-				}
-				else {
-					foreach($lists as $list) {
-						$retval[$list->ListID] = $list->Name;
-					}
-				}
-			}
-    }
-  } catch (SoapFault $e) {
-  	watchdog('campaignmonitor', 'There was an error getting client lists: %fault', array('%fault' => $e->faultstring), WATCHDOG_ERROR);
+	$retval = array();
+  $cm = new CampaignMonitor($api_key, $client_id, $campaign_id, $list_id );
+
+  $result = $cm->clientGetLists();
+
+  if ($result['anyType']['Code'] != 0) {
+	  watchdog('campaignmonitor', 'Code - %code, Message - %message', 
+		  			array('%code' => $result['anyType']['Code'], '%message' => $result['anyType']['Message']));
     if ($show_errors) {
       drupal_set_message("There is an error with the newsletter server. Please try again later.", 'error');
     }
+  }
+  else {
+		 //watchdog('campaignmonitor', 'retval: %retval', array('%retval' => print_r($result, true)), WATCHDOG_INFO);
+    if (!empty($result['anyType']['List'])) {
+				$lists = $result['anyType']['List'];
+				// if there is only one list
+				if (!empty($lists['ListID'])) {
+					$retval[$lists['ListID']] = $lists['Name'];
+				}
+				else {
+					foreach($lists as $list) {
+						$retval[$list['ListID']] = $list['Name'];
+				  }
+			  }
+		}
   }
   return $retval;
 }
