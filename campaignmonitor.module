@@ -584,7 +584,7 @@ function _campaignmonitor_is_subscribed($api_key, $list_id, $email, $show_errors
 		  			array('%code' => $result['anyType']['Code'], '%message' => $result['anyType']['Message']));
     $retval = FALSE;
     if ($show_errors) {
-      drupal_set_message("There is an error with the newsletter server. Please try again later.", 'error');
+      drupal_set_message(t("There is an error with the newsletter server. Please try again later."), 'error');
     }
   } 
   else if ($result['anyType'] == 'False') {
@@ -607,10 +607,10 @@ function _campaignmonitor_add_subscriber($api_key, $list_id, $name, $email, $cus
   if ($result['anyType']['Code'] != 0) {
 	  watchdog('campaignmonitor', 'Code - %code, Message - %message', 
 		  			array('%code' => $result['anyType']['Code'], '%message' => $result['anyType']['Message']));
-    drupal_set_message("There was an error joining to newsletter.", 'error');
+    drupal_set_message(t("There was an error joining to newsletter."), 'error');
   }
   else {
-    drupal_set_message("You have successfully been added.", 'status');
+    drupal_set_message(t("You have successfully been added."), 'status');
   }
 }
 
@@ -619,12 +619,12 @@ function _campaignmonitor_remove_subscriber($api_key, $list_id, $email, $show_er
 
   $result = $cm->subscriberUnsubscribe($email);
   if ($result['Result']['Code'] == 0) {
-    drupal_set_message("You have successfully been unsubscribed.", 'status');
+    drupal_set_message(t("You have successfully been unsubscribed."), 'status');
   }
   else {
 	  watchdog('campaignmonitor', 'Code - %code, Message - %message', 
 		  			array('%code' => $result['anyType']['Code'], '%message' => $result['anyType']['Message']));
-    drupal_set_message("There was an error unsubscribing from newsletter.", 'error');
+    drupal_set_message(t("There was an error unsubscribing from newsletter."), 'error');
   }
 }
 
@@ -643,7 +643,7 @@ function _campaignmonitor_get_subscriber($api_key, $list_id, $email, $show_error
 	  watchdog('campaignmonitor', 'Code - %code, Message - %message', 
 		  			array('%code' => $result['anyType']['Code'], '%message' => $result['anyType']['Message']));
     if ($show_errors) {
-      drupal_set_message("There is an error with the newsletter server. Please try again later.", 'error');
+      drupal_set_message(t("There is an error with the newsletter server. Please try again later."), 'error');
     }
   }
   else {
@@ -694,7 +694,7 @@ function _campaignmonitor_get_lists($api_key, $client_id) {
 	  watchdog('campaignmonitor', 'Code - %code, Message - %message', 
 		  			array('%code' => $result['anyType']['Code'], '%message' => $result['anyType']['Message']));
     if ($show_errors) {
-      drupal_set_message("There is an error with the newsletter server. Please try again later.", 'error');
+      drupal_set_message(t("There is an error with the newsletter server. Please try again later."), 'error');
     }
   }
   else {
@@ -725,7 +725,7 @@ function _campaignmonitor_get_custom_fields($api_key, $list_id) {
 	  watchdog('campaignmonitor', 'Code - %code, Message - %message', 
 		  			array('%code' => $result['anyType']['Code'], '%message' => $result['anyType']['Message']));
     if ($show_errors) {
-      drupal_set_message("There is an error with the newsletter server. Please try again later.", 'error');
+      drupal_set_message(t("There is an error with the newsletter server. Please try again later."), 'error');
     }
   }
   else {
