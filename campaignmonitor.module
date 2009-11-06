@@ -247,7 +247,7 @@ function campaignmonitor_admin() {
     '#description' => t('Choose which forms you want to display the Join Newsletter checkbox.')
   );
   
-  $form['campaignmonitor_checkboxisplaytext'] = array(
+  $form['campaignmonitor_checkboxdisplaytext'] = array(
     '#type' => 'textfield',
     '#title' => t('Display Text for Checkbox'),
     '#default_value' => variable_get('campaignmonitor_checkboxdisplaytext', 'Join our Newsletter?'),
