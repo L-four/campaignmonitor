@@ -297,6 +297,7 @@ function campaignmonitor_subscribe_form(&$form_state, $list_id) {
   global $user;
 	$name = '';
 	$email = '';
+	$subscriber_custom_fields = array();
 	$default = false;
 	
 	// Check if the profile module is installed. If it is, use the name element of the profile
@@ -312,6 +313,7 @@ function campaignmonitor_subscribe_form(&$form_state, $list_id) {
 			// Also if subscribed get name
 			$subscriber = _campaignmonitor_get_subscriber(variable_get('campaignmonitor_api_key', ''),
 			  $list_id, $email);
+				//watchdog('campaignmonitor', 'subscriber: %subscriber', array('%subscriber' => print_r($subscriber, true)), WATCHDOG_DEBUG);
 			$name = $subscriber['name'];
     }
     else {
@@ -336,12 +338,70 @@ function campaignmonitor_subscribe_form(&$form_state, $list_id) {
     '#required'      => TRUE,
 		'#default_value' => $email,
   );
+	
+	$custom_fields = _campaignmonitor_get_custom_fields(variable_get('campaignmonitor_api_key', ''), $list_id);
+	//watchdog('campaignmonitor', 'custom fields: %retval', array('%retval' => print_r($custom_fields, true)), WATCHDOG_INFO);
+	foreach($custom_fields as $field) {
+		$key = str_replace('[','',$field['Key']);
+		$key = str_replace(']','',$key);
+	  if($field['FieldName'] == 'Text') {
+	    $form[$key] = array(
+        '#type'          => 'textfield',
+        '#title'         => $field['FieldName'],
+        '#size'          => 20,
+        '#maxlength'     => 100,
+		    '#default_value' => $subscriber['CustomFields'][$field['FieldName']],
+      );
+		} else if($field['DataType'] == 'MultiSelectOne') {
+		  $options = array();
+		  foreach($field['FieldOptions']['string'] as $option) {
+				$options[$option] = $option;
+			}
+			$_defaultvalue = $subscriber['CustomFields'][$field['FieldName']];
+			if(empty($_defaultvalue)) {
+				$defaultvalue = '';
+			} else {
+				$defaultvalue = $_defaultvalue;
+			}
+	    $form[$key] = array(
+        '#type'          => 'select',
+        '#title'         => $field['FieldName'],
+				'#options'       => $options,
+		    '#default_value' => $defaultvalue,
+      );
+		} else if($field['DataType'] == 'MultiSelectMany') {
+		  $options = array();
+		  foreach($field['FieldOptions']['string'] as $option) {
+				$options[$option] = $option;
+			}
+			watchdog('campaignmonitor', 'options: %retval', array('%retval' => print_r($options, true)), WATCHDOG_INFO);
+			$_defaultvalues = $subscriber['CustomFields'][$field['FieldName']];
+			if(empty($_defaultvalues)) {
+			  $defaultvalues = array();
+			} else if (!is_array($_defaultvalues)) {
+				$defaultvalues = array();
+				$defaultvalues[] = $_defaultvalues;
+			} else  {
+				//watchdog('campaignmonitor', 'default value: %retval', array('%retval' => print_r($_defaultvalues, true)), WATCHDOG_DEBUG);
+				$defaultvalues = array();
+				foreach($_defaultvalues as $dv) {
+					$defaultvalues[] = $dv;
+				}
+			}
+	    $form[$key] = array(
+        '#type'          => 'checkboxes',
+        '#title'         => $field['FieldName'],
+				'#options'       => $options,
+		    '#default_value' => $defaultvalues,
+      );
+		}
+	}
   
-  $form['unsubscribe_newsletter'] = array(
+  /*$form['unsubscribe_newsletter'] = array(
     '#type'          => 'checkbox',
     '#title'         => t('Unsubscribe'),
     '#default_value' => $default,
-  );
+  );*/
   
   $form['list_id'] = array(
     '#type' => 'hidden',
@@ -361,11 +421,21 @@ function campaignmonitor_subscribe_form_submit($form, &$form_state) {
   $list_id = $form_values['list_id'];
   $name = $form_values['name'];
   $email = $form_values['email'];
+	$custom_field_array = array();
+	
+	watchdog('campaignmonitor', 'form_values: %retval', array('%retval' => print_r($form_values, true)), WATCHDOG_INFO);
 
   // any cases other then these are when things are unchanged
   if (!$form_values['unsubscribe_newsletter']) {
     // this is the case where they now want to be subscribed, and weren't before
-    _campaignmonitor_add_subscriber($api_key, $list_id, $name, $email);
+		$custom_fields = _campaignmonitor_get_custom_fields($api_key, $list_id);
+		foreach($custom_fields as $field) {
+			$key = str_replace('[','',$field['Key']);
+			$key = str_replace(']','',$key);
+		  $custom_field_array[$field['FieldName']] = $form_values[$key]; 
+		}
+		
+    _campaignmonitor_add_subscriber($api_key, $list_id, $name, $email, $custom_field_array);
   }
   else if ($form_values['unsubscribe_newsletter']) {
     // this is the case where they don't want to be subscribed, and were before
@@ -526,10 +596,14 @@ function _campaignmonitor_is_subscribed($api_key, $list_id, $email, $show_errors
   return $retval;
 }
 
-function _campaignmonitor_add_subscriber($api_key, $list_id, $name, $email, $show_errors = FALSE) {
+function _campaignmonitor_add_subscriber($api_key, $list_id, $name, $email, $custom_fields = array(), $show_errors = FALSE) {
   $cm = new CampaignMonitor($api_key, $client_id, $campaign_id, $list_id );
-
-  $result = $cm->subscriberAddAndResubscribe($email, $name);
+	
+	if(count($custom_fields) > 0) {
+	  $result = $cm->subscriberAddAndResubscribeWithCustomFields($email, $name, $custom_fields);
+	} else {
+    $result = $cm->subscriberAddAndResubscribe($email, $name);
+	}
   if ($result['anyType']['Code'] != 0) {
 	  watchdog('campaignmonitor', 'Code - %code, Message - %message', 
 		  			array('%code' => $result['anyType']['Code'], '%message' => $result['anyType']['Message']));
@@ -573,7 +647,39 @@ function _campaignmonitor_get_subscriber($api_key, $list_id, $email, $show_error
     }
   }
   else {
+	  watchdog('campaignmonitor', 'retval: %retval', array('%retval' => print_r($result, true)), WATCHDOG_INFO);
     $retval['name'] = $result['anyType']['Name'];
+		$custom_fields = array();
+		$c = $result['anyType']['CustomFields']['SubscriberCustomField'];
+		//watchdog('campaignmonitor', 'customfields: %retval', array('%retval' => print_r($c, true)), WATCHDOG_INFO);
+		if (!empty($c['Key'])) {
+		  $custom_fields = array();
+			$custom_fields[$c['Key']] = $c['Value'];
+		} 
+		else {
+			if(!empty($c)) {
+		  foreach($c as $field) {
+			  if(!empty($custom_fields[$field['Key']])) {
+				  //watchdog('campaignmonitor', 'not empty');
+				  if(is_array($custom_fields[$field['Key']])) {
+					//watchdog('campaignmonitor', 'is array');
+					  $values = $custom_fields[$field['Key']];
+					}
+					else {
+					//watchdog('campaignmonitor', 'not array');
+					  $values = array();
+						//$values[$field['Key']] = $custom_fields[$field['Key']];
+						$values[] = $custom_fields[$field['Key']];
+					}
+					$values[] = $field['Value'];
+				  $custom_fields[$field['Key']] = $values;
+				}
+				else {
+			    $custom_fields[$field['Key']] = $field['Value'];
+			  }
+		  } }
+		}
+		$retval['CustomFields'] = $custom_fields;
   }
   return $retval;
 }
@@ -603,6 +709,39 @@ function _campaignmonitor_get_lists($api_key, $client_id) {
 					foreach($lists as $list) {
 						$retval[$list['ListID']] = $list['Name'];
 				  }
+			  }
+		}
+  }
+  return $retval;
+}
+
+function _campaignmonitor_get_custom_fields($api_key, $list_id) {
+	$retval = array();
+  $cm = new CampaignMonitor($api_key, $client_id, $campaign_id, $list_id );
+
+  $result = $cm->listGetCustomFields( $list_id );
+
+  if ($result['anyType']['Code'] != 0) {
+	  watchdog('campaignmonitor', 'Code - %code, Message - %message', 
+		  			array('%code' => $result['anyType']['Code'], '%message' => $result['anyType']['Message']));
+    if ($show_errors) {
+      drupal_set_message("There is an error with the newsletter server. Please try again later.", 'error');
+    }
+  }
+  else {
+		watchdog('campaignmonitor', 'retval: %retval', array('%retval' => print_r($result, true)), WATCHDOG_INFO);
+    if (!empty($result['anyType']['ListCustomField'])) {
+				
+				// if there is only one list
+				if (!empty($result['anyType']['ListCustomField']['FieldName'])) {
+					$retval = array();
+					$retval[] = $result['anyType']['ListCustomField'];
+				}
+				else {
+					$retval = $result['anyType']['ListCustomField'];
+					//foreach($lists as $list) {
+					//	$retval[$list['ListID']] = $list['Name'];
+				  //}
 			  }
 		}
   }
