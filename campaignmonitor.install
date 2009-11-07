@@ -3,7 +3,7 @@
 
 function campaignmonitor_uninstall() {
   variable_del('campaignmonitor_userpagedisplaytext');
-  variable_del('campaignmonitor_checkboxisplaytext');
+  variable_del('campaignmonitor_checkboxdisplaytext');
   variable_del('campaignmonitor_client_id');
   variable_del('campaignmonitor_available_lists');
   variable_del('campaignmonitor_list_ids');
