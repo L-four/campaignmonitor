@@ -343,12 +343,12 @@ function campaignmonitor_admin() {
         '#default_value'  => $saved_list->onregopage,
       );
       
-      $form[CM_LISTS]['campaignmonitor_list_'. $list_id]['displayname'] = array(
+      /*$form[CM_LISTS]['campaignmonitor_list_'. $list_id]['displayname'] = array(
         '#type'       => 'checkbox',
         '#title'      => t('Display Name field'),
         '#description' => t('When subscribing, should the name field be displayed.'),
         '#default_value'  => $saved_list->displayname,
-      );
+      );*/
       
       $keyoptions = campaignmonitor_get_field_keys();
       
@@ -390,7 +390,7 @@ function campaignmonitor_admin_settings_validate($form, &$form_state) {
     $list->name = $form_list['name'];
     $list->oncontactpage = $form_list['oncontactpage'];
     $list->onregopage = $form_list['onregopage'];
-    $list->displayname = $form_list['displayname'];
+    //$list->displayname = $form_list['displayname'];
     $list->namekey = $form_list['namekey'];
     $lists[$form_list['list_id']] = $list;
   }
