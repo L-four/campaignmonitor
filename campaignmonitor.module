@@ -10,6 +10,11 @@
  * about this PHP API see By ssherriff: http://code.google.com/p/campaignmonitor-php/
  */
  
+define('CM_SUBSCRIPTION_SUCCESS',   t('Thank you, you have been successfully subscribed.'));
+define('CM_SUBSCRIPTION_FAILURE',   t('We were unable to subscribe you at this time. Please try again later.'));
+define('CM_UNSUBSCRIPTION_SUCCESS', t('Thank you, you have been successfully unsubscribed.'));
+define('CM_UNSUBSCRIPTION_FAILURE', t('We were unable to unsubscribe you at this time. Please try again later.'));
+ 
  @require_once(drupal_get_path('module', 'campaignmonitor') .'/lib/CMBase.php');
 
 /* DRUPAL HOOKS */
@@ -70,10 +75,10 @@ function campaignmonitor_form_alter(&$form, $form_state, $form_id) {
   	$lists = _campaignmonitor_get_lists($api_key, $client_id); 
 		
 		$options = array();
-		$default_values = array();
+		//$default_values = array();
 		foreach ($list_ids as $list_id => $list) {
 			if($list != '0') {
-				$default_values[] = $list_id;
+				//$default_values[] = $list_id;
 				$options[$list_id] = $lists[$list_id];
 			}
 		}
@@ -82,7 +87,7 @@ function campaignmonitor_form_alter(&$form, $form_state, $form_id) {
 		    '#type'          => 'checkboxes',
 				'#title'         => t(variable_get('campaignmonitor_checkboxdisplaytext', 'Available Newsletters')),
 				'#options'       => $options,
-		    '#default_value' => $default_values,
+		    //'#default_value' => $default_values,
 				'#weight'        => 99,
 		);
   
@@ -631,13 +636,15 @@ function _campaignmonitor_remove_subscriber($api_key, $list_id, $email, $show_er
 function _campaignmonitor_get_subscriber($api_key, $list_id, $email, $show_errors = FALSE) {
   $retval = array("name" => '', "email" => $email);
   $cm = new CampaignMonitor($api_key, $client_id, $campaign_id, $list_id );
+	
+	$result = $cm->subscriberGetSingleSubscriber($list_id, $email);
 
-  $result = $cm->makeCall( 'Subscribers.GetSingleSubscriber', array(
+  /*$result = $cm->makeCall( 'Subscribers.GetSingleSubscriber', array(
                  'params' => array(
                  'ListID' => $list_id,
                  'EmailAddress' => $email)
                   )
-                );
+                );*/
 
   if ($result['anyType']['Code'] != 0) {
 	  watchdog('campaignmonitor', 'Code - %code, Message - %message', 
