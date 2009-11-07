@@ -10,10 +10,24 @@
  * about this PHP API see By ssherriff: http://code.google.com/p/campaignmonitor-php/
  */
  
-define('CM_SUBSCRIPTION_SUCCESS',   t('Thank you, you have been successfully subscribed.'));
-define('CM_SUBSCRIPTION_FAILURE',   t('We were unable to subscribe you at this time. Please try again later.'));
-define('CM_UNSUBSCRIPTION_SUCCESS', t('Thank you, you have been successfully unsubscribed.'));
-define('CM_UNSUBSCRIPTION_FAILURE', t('We were unable to unsubscribe you at this time. Please try again later.'));
+define('CM_SUBSCRIPTION_SUCCESS',   t('You have been successfully subscribed.'));
+define('CM_SUBSCRIPTION_ERROR',   t('We were unable to subscribe you at this time. Please try again later.'));
+define('CM_UNSUBSCRIPTION_SUCCESS', t('You have been successfully unsubscribed.'));
+define('CM_UNSUBSCRIPTION_ERROR', t('We were unable to unsubscribe you at this time. Please try again later.'));
+define('CM_ERROR', t('There is an error with the newsletter server. Please try again later'));
+
+define('CM_CHECKBOX_DISPLAY_TEXT_DEFAULT', t('Available Newsletters'));
+define('CM_USERPAGE_DISPLAY_TEXT_DEFAULT', t('Available Newsletters'));
+define('CM_CONNECTION_TIMEOUT_DEFAULT', 15);
+
+define('CM_API_KEY', 'campaignmonitor_api_key');
+define('CM_CLIENT_ID', 'campaignmonitor_client_id');
+define('CM_DISPLAY_ON', 'campaignmonitor_display_on');
+define('CM_CHECKBOX_DISPLAY_TEXT', 'campaignmonitor_checkboxdisplaytext');
+define('CM_USERPAGE_DISPLAY_TEXT', 'campaignmonitor_userpagedisplaytext');
+define('CM_PAST_CAMPAIGN_URL', 'campaignmonitor_pastcampaignurl');
+define('CM_CONNECTION_TIMEOUT', 'campaignmonitor_connection_timeout');
+define('CM_LISTS', 'campaignmonitor_lists');
  
  @require_once(drupal_get_path('module', 'campaignmonitor') .'/lib/CMBase.php');
 
@@ -55,45 +69,39 @@ function campaignmonitor_menu() {
     'weight' => 5,
   );
   
-  $items['campaignmonitor/js'] = array(
-		'title' => 'Javascript Lists',
-		'page callback' => 'campaignmonitor_lists_js',
-		'access arguments' => array('access content'),
-		'type' => MENU_CALLBACK,
-  );
-  
   return $items;
 }
 
 /* hook_form_alter */
 function campaignmonitor_form_alter(&$form, $form_state, $form_id) {
-  $display_on = variable_get('campaignmonitor_display_on', array());
+  $display_on = variable_get(CM_DISPLAY_ON, array());
   if (('contact_mail_page' == $form_id && $display_on['contact'] != '0') || ('user_register' == $form_id && $display_on['registration'] != '0') && user_access('join newsletter')) {
-    $api_key = variable_get('campaignmonitor_api_key', '');
-  	$client_id = variable_get('campaignmonitor_client_id', '');
-		$list_ids = campaignmonitor_get_available_lists();
-  	$lists = _campaignmonitor_get_lists($api_key, $client_id); 
+    $api_key = variable_get(CM_API_KEY, '');
+  	$client_id = variable_get(CM_CLIENT_ID, '');
+		$lists = campaignmonitor_get_available_lists(); 
+		
+		$not_empty = FALSE;
 		
 		$options = array();
-		//$default_values = array();
-		foreach ($list_ids as $list_id => $list) {
-			if($list != '0') {
-				//$default_values[] = $list_id;
-				$options[$list_id] = $lists[$list_id];
+		foreach ($lists as $list_id => $list) {
+			if(($list->oncontactpage && 'contact_mail_page' == $form_id) || ($list->onregopage && 'user_register' == $form_id)) {
+				$options[$list_id] = $list->name;
+				$not_empty = TRUE;
 			}
 		}
 		
-		$form['subscribe_newsletter'] = array(
-		    '#type'          => 'checkboxes',
-				'#title'         => t(variable_get('campaignmonitor_checkboxdisplaytext', 'Available Newsletters')),
-				'#options'       => $options,
-		    //'#default_value' => $default_values,
-				'#weight'        => 99,
-		);
-  
-    $form['submit']['#weight'] = 100;
+		if($not_empty) {
+			$form['subscribe_newsletter'] = array(
+					'#type'          => 'checkboxes',
+					'#title'         => t(variable_get(CM_CHECKBOX_DISPLAY_TEXT, CM_CHECKBOX_DISPLAY_TEXT_DEFAULT)),
+					'#options'       => $options,
+					'#weight'        => 99,
+			);
 		
-		$form['#submit'][] = '_campaignmonitor_altered_form_submit';
+			$form['submit']['#weight'] = 100;
+			
+			$form['#submit'][] = '_campaignmonitor_altered_form_submit';
+		}
   }
 }
 
@@ -107,7 +115,7 @@ function _campaignmonitor_altered_form_submit($form, &$form_state) {
     }
 
     // Replace api_key and list_id with your own details
-    $api_key = variable_get('campaignmonitor_api_key', '');
+    $api_key = variable_get(CM_API_KEY, '');
 		
     $email = $form_values['mail'];
     $name = $form_values['name'];
@@ -133,8 +141,9 @@ function campaignmonitor_block($op = 'list', $delta = 0, $edit = array()) {
     
     case 'view':
     default:
-	  	$lists = _campaignmonitor_get_lists(variable_get('campaignmonitor_api_key',''), variable_get('campaignmonitor_client_id',''));
-	  	$block['subject'] = $lists[$delta];
+	  	$lists = campaignmonitor_get_available_lists();
+			$list = $lists[$delta];
+	  	$block['subject'] = $list->name;
       $block['content'] = theme('campaignmonitor_block_content', $delta);
       return $block;
   }
@@ -161,136 +170,233 @@ function campaignmonitor_theme() {
  * A block is returned for each CampaignMonitor list chosen in admin settings
  */
 function campaignmonitor_block_list() {
-  $api_key = variable_get('campaignmonitor_api_key', '');
-  $client_id = variable_get('campaignmonitor_client_id', '');
-  $list_ids = campaignmonitor_get_available_lists();
-	//watchdog('campaign monitor','lists: %lists',array('%lists' => print_r($list_ids,true)));
-  $lists = _campaignmonitor_get_lists($api_key, $client_id); 
-  foreach ($list_ids as $list_id => $list) {
+  $lists = campaignmonitor_get_available_lists();
+  foreach ($lists as $list_id => $list) {
   	// If list==0 that means that list is not chosen, don't create a block
   	if($list != '0') {
-      $blocks[$list_id]['info'] = t('Subscribe to @list_name', array('@list_name' => $lists[$list_id]));
+      $blocks[$list_id]['info'] = t('Subscribe to @list_name', array('@list_name' => $list->name));
 		}
   }
   return $blocks;
 }
 
 function campaignmonitor_admin() {
+	
+	$api_key = variable_get(CM_API_KEY, '');
+	$client_id = variable_get(CM_CLIENT_ID, '');
+	
+	if($apiKey == '' && $client_id == '') {
+		$collapsed = FALSE;
+		$collapsible = FALSE;
+		$is_setup = FALSE;
+	} else {
+		$collapsed = TRUE;
+		$collapsible = TRUE;
+		$is_setup = TRUE;
+	}
 
-  $form['campaignmonitor_api_key'] = array(
+	$form['campaignmonitor_account_details'] = array(
+      '#type'       => 'fieldset',
+      '#collapsible' => $collapsible,
+      '#collapsed' => $collapsed,
+      '#title'      => t('Account Details'),
+  );
+
+  $form['campaignmonitor_account_details'][CM_API_KEY] = array(
     '#type' => 'textfield',
     '#title' => t('API Key'),
-    '#default_value' => variable_get('campaignmonitor_api_key', ''),
+    '#default_value' => $api_key,
     '#required' => TRUE,
     '#size' => 50,
     '#maxlength' => 200,
     '#description' => t('Your Campaign Monitor API Key. See <a href="http://www.campaignmonitor.com/api/required/">documentation</a>.')
   );
   
-  $form['campaignmonitor_client_id'] = array(
+  $form['campaignmonitor_account_details'][CM_CLIENT_ID] = array(
     '#type' => 'textfield',
     '#title' => t('Client ID'),
-    '#default_value' => variable_get('campaignmonitor_client_id', ''),
+    '#default_value' => $client_id,
     '#required' => TRUE,
     '#size' => 50,
     '#maxlength' => 200,
     '#description' => t('Your Campaign Monitor Client ID. See <a href="http://www.campaignmonitor.com/api/required/">documentation</a>.')
   );
-  
-  // Add a wrapper for the lists and selection radio buttons.
-  $form['campaignmonitor_lists_wrapper'] = array(
-  	'#tree' => FALSE,
-		'#prefix' => '<div class="clear-block" id="campaignmonitor-lists-wrapper">',
-		'#suffix' => '</div>',
-  );
-
-  $form['campaignmonitor_lists_wrapper']['campaignmonitor_available_lists'] = array(
-		'#title' => t('Choose which lists you wish to make available'),
-		'#type' => 'radios',
-		'#options' => array(
-		  'all' => 'All lists for this client',
-		  'some' => 'I want to select specific lists for this client',
-	  	),
-		'#default_value' => variable_get('campaignmonitor_available_lists', 'all'),
-		'#description' => t('Please enter Client ID and select which lists you wish to make available.'),
-		'#submit' => array('_campaignmonitor_fetch_lists_submit'), // if no JS
-		'#ahah' => array(
-		  'path' => 'campaignmonitor/js',
-		  'wrapper' => 'campaignmonitor-lists',
-		  'method' => 'replace',
-		  'effect' => 'fade',
-		),
-  );
-
-  // Container for the list of lists
-  if(variable_get('campaignmonitor_available_lists', 'all') == 'some') {
-		$form['campaignmonitor_lists_wrapper']['campaignmonitor_list_ids'] = array(
+	
+	if($is_setup) {
+	
+		$display_on = variable_get(CM_DISPLAY_ON, array());
+		$display_text = variable_get(CM_CHECKBOX_DISPLAY_TEXT, CM_CHECKBOX_DISPLAY_TEXT_DEFAULT);
+		$past_campaign_url = variable_get(CM_PAST_CAMPAIGN_URL, '');
+		$connection_timeout = variable_get(CM_CONNECTION_TIMEOUT, CM_CONNECTION_TIMEOUT_DEFAULT);
+		
+		$collapsed = TRUE;
+		$collapsible = TRUE;
+	
+		$form['campaignmonitor_general_options'] = array(
+      '#type'       => 'fieldset',
+      '#collapsible' => $collapsible,
+      '#collapsed' => $collapsed,
+      '#title'      => t('General Options'),
+  	);
+		
+		$form['campaignmonitor_general_options'][CM_DISPLAY_ON] = array(
 			'#type' => 'checkboxes',
-			'#prefix' => '<div id="campaignmonitor-lists">',
-			'#options' => _campaignmonitor_get_lists(variable_get('campaignmonitor_api_key',''), variable_get('campaignmonitor_client_id','')),
-			'#default_value' => variable_get('campaignmonitor_list_ids', array()),
-			'#suffix' => '</div>',
+			'#title' => t('Display Options'),
+			'#default_value' => $display_on,
+			'#options' => array(
+				'contact' => t('Contact Page'),
+				'registration' => t('Registration Page')
+			),
+			'#description' => t('Choose which forms you want to display the Join Newsletter checkbox(es).')
 		);
-  } 
-  else {
-	  $form['campaignmonitor_lists_wrapper']['campaignmonitor_list_ids'] = array(
-			'#type' => 'checkboxes',
-			'#prefix' => '<div id="campaignmonitor-lists">',
-			'#options' => array(),
-			'#suffix' => '</div>',
-	  );
-  }
-  
-  $form['campaignmonitor_display_on'] = array(
-    '#type' => 'checkboxes',
-    '#title' => t('Display on Options'),
-    '#default_value' => variable_get('campaignmonitor_display_on', array()),
-    '#options' => array(
-      'contact' => t('Contact Page'),
-      'registration' => t('Registration Page')
-    ),
-    '#description' => t('Choose which forms you want to display the Join Newsletter checkbox.')
-  );
-  
-  $form['campaignmonitor_checkboxdisplaytext'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Display Text for Checkbox'),
-    '#default_value' => variable_get('campaignmonitor_checkboxdisplaytext', 'Join our Newsletter?'),
-    '#size' => 50,
-    '#maxlength' => 50,
-    '#description' => t("This text will display next to the checkbox on the selected forms.")
-  );
-  
-  $form['campaignmonitor_userpagedisplaytext'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Display Text for User Page'),
-    '#default_value' => variable_get('campaignmonitor_userpagedisplaytext', 'Available Newsletters'),
-    '#size' => 50,
-    '#maxlength' => 50,
-    '#description' => t("This text will display next to the checkbox on the user profile page.")
-  );
-  
-  $form['campaignmonitor_pastcampaignurl'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Past Campaign URL'),
-    '#default_value' => variable_get('campaignmonitor_pastcampaignurl', ''),
-    '#size' => 100,
-    '#maxlength' => 100,
-    '#description' => t("This is required if you want to use the page that displays past campaigns. You can find this value if you go to Manage Clients, click on the client, go to the link that tells you how to display past campaigns, then copy the URL ONLY from the html given. The URL is in between the src=\"\" value.")
-  );
-  
-  $form['campaignmonitor_connection_timeout'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Connection timeout'),
-    '#default_value' => variable_get('campaignmonitor_connection_timeout', 15),
-    '#size' => 10,
-    '#maxlength' => 10,
-    '#description' => t("If your server can't get through to the API, or the API server is down, this is the amount of time until the connection times out in seconds. Default is 15 seconds.")
-  );
+		
+		$form['campaignmonitor_general_options'][CM_CHECKBOX_DISPLAY_TEXT] = array(
+			'#type' => 'textfield',
+			'#title' => t('Display Text for Checkbox'),
+			'#default_value' => $display_text,
+			'#size' => 50,
+			'#maxlength' => 50,
+			'#description' => t("This text will display next to the checkbox on the selected forms.")
+		);
+		
+		$form['campaignmonitor_general_options'][CM_USERPAGE_DISPLAY_TEXT] = array(
+			'#type' => 'textfield',
+			'#title' => t('Display Text for User Page'),
+			'#default_value' => variable_get(CM_USERPAGE_DISPLAY_TEXT, CM_USERPAGE_DISPLAY_TEXT_DEFAULT),
+			'#size' => 50,
+			'#maxlength' => 50,
+			'#description' => t("This text will display next to the checkbox on the user profile page.")
+		);
+		
+		$form['campaignmonitor_general_options'][CM_PAST_CAMPAIGN_URL] = array(
+			'#type' => 'textfield',
+			'#title' => t('Past Campaign URL'),
+			'#default_value' => variable_get(CM_PAST_CAMPAIGN_URL, ''),
+			'#size' => 100,
+			'#maxlength' => 100,
+			'#description' => t("This is required if you want to use the page that displays past campaigns. You can find this value if you go to Manage Clients, click on the client, go to the link that tells you how to display past campaigns, then copy the URL ONLY from the html given. The URL is in between the src=\"\" value.")
+		);
+		
+		$form['campaignmonitor_general_options'][CM_CONNECTION_TIMEOUT] = array(
+			'#type' => 'textfield',
+			'#title' => t('Connection timeout'),
+			'#default_value' => $connection_timeout,
+			'#size' => 10,
+			'#maxlength' => 10,
+			'#description' => t("If your server can't get through to the API, or the API server is down, this is the amount of time until the connection times out in seconds. Default is %default seconds.", array('%default' => CM_CONNECTION_TIMEOUT_DEFAULT))
+		);
+		
+		$available_lists = _campaignmonitor_get_lists($api_key, $client_id);
+		$saved_lists = unserialize(variable_get(CM_LISTS, ''));
+		
+		$collapsed = FALSE;
+		$collapsible = TRUE;
+	
+		$form[CM_LISTS] = array(
+      '#type'       => 'fieldset',
+      '#collapsible' => $collapsible,
+      '#collapsed' => $collapsed,
+      '#title'      => t('Available Lists'),
+			'#tree'         => TRUE,
+  	);
+		
+		foreach($available_lists as $list_id => $list_name) {
+      $saved_list = $saved_lists[$list_id];
+		
+			$list_detail = _campaignmonitor_get_list_detail($api_key, $list_id);
+			
+			$details = t('<p>Confirm Opt in: %optin<br/>Unsubscribe Page: %unsub<br/>Confirmation Success Page: %conf</p>', array('%optin' => $list_detail['ConfirmOptIn'], '%unsub' => $list_detail['UnsubscribePage'], '%conf' => $list_detail['ConfirmationSuccessPage']));
+			
+			$form[CM_LISTS]['campaignmonitor_list_'. $list_id] = array(
+				'#type'       => 'fieldset',
+				'#collapsible' => TRUE,
+				'#collapsed' => TRUE,
+				'#title'      => $list_name,
+			);
+			
+			$form[CM_LISTS]['campaignmonitor_list_'. $list_id]['list_id'] = array(
+        '#type'       => 'value',
+        '#value'      => $list_id,
+      );
+			
+			$form[CM_LISTS]['campaignmonitor_list_'. $list_id]['name'] = array(
+        '#type'       => 'value',
+        '#value'      => $list_name,
+      );
+			
+			$form[CM_LISTS]['campaignmonitor_list_'. $list_id]['list_detail'] = array(
+				'#value' => $details,
+			);
+			
+			$form[CM_LISTS]['campaignmonitor_list_'. $list_id]['oncontactpage'] = array(
+				'#type'       => 'checkbox',
+				'#title'      => t('Include on Contact page'),
+				'#description' => t('If displaying on the contact page is enabled in general options, checking this includes this list in the display.'),
+				'#default_value'  => $saved_list->oncontactpage,
+			);
+			
+			$form[CM_LISTS]['campaignmonitor_list_'. $list_id]['onregopage'] = array(
+				'#type'       => 'checkbox',
+				'#title'      => t('Include on Registration page'),
+				'#description' => t('If displaying on the registration page is enabled in general options, checking this includes this list in the display.'),
+				'#default_value'  => $saved_list->onregopage,
+			);
+			
+			$form[CM_LISTS]['campaignmonitor_list_'. $list_id]['displayname'] = array(
+				'#type'       => 'checkbox',
+				'#title'      => t('Display Name field'),
+				'#description' => t('When subscribing, should the name field be displayed.'),
+				'#default_value'  => $saved_list->displayname,
+			);
+			
+			$keyoptions = campaignmonitor_get_field_keys();
+			
+			$form[CM_LISTS]['campaignmonitor_list_'. $list_id]['namekey'] = array(
+        '#type'           => 'select',
+        '#title'          => t('Name'),
+        '#options'        => $keyoptions,
+        '#default_value'  => $saved_list->namekey,
+      );
+			
+			$custom_fields = _campaignmonitor_get_custom_fields(variable_get(CM_API_KEY, ''), $list_id);
+			
+		}
+	}
+	
+	$form['#validate'][] = 'campaignmonitor_admin_settings_validate';
   
   $form['#submit'][] = 'campaignmonitor_admin_submit';
   
   return system_settings_form($form);
+}
+
+/**
+ * validate the admin settings and serialize the saved lists into objects
+ *
+ * @param <type> $form
+ * @param <type> $form_state
+ */
+function campaignmonitor_admin_settings_validate($form, &$form_state) {
+  // no lists selected or first time here
+  if(!is_array($form_state['values'][CM_LISTS])){
+    return;
+  }
+  
+  $lists = array();
+  foreach ($form_state['values'][CM_LISTS] as $form_list) {
+    $list = new stdClass();
+    $list->id = $form_list['list_id'];
+		$list->name = $form_list['name'];
+    $list->oncontactpage = $form_list['oncontactpage'];
+    $list->onregopage = $form_list['onregopage'];
+		$list->displayname = $form_list['displayname'];
+    $list->namekey = $form_list['namekey'];
+    $lists[$form_list['list_id']] = $list;
+  }
+  
+  // remove lists from the form_state
+  unset($form_state['values'][CM_LISTS]);
+  variable_set(CM_LISTS, serialize($lists));
 }
 
 function campaignmonitor_admin_submit($form, &$form_state) {
@@ -300,25 +406,27 @@ function campaignmonitor_admin_submit($form, &$form_state) {
 
 function campaignmonitor_subscribe_form(&$form_state, $list_id) {
   global $user;
+	$uid = $user->uid;
 	$name = '';
 	$email = '';
 	$subscriber_custom_fields = array();
 	$default = false;
 	
-	// Check if the profile module is installed. If it is, use the name element of the profile
-	if (module_exists("profile")) {
-  	profile_load_profile($user->uid);
-		$name = $user->profile_name;
-	}
-  if ($user->uid != 0) {
+	$lists = campaignmonitor_get_available_lists();
+	$list = $lists[$list_id];
+	
+	// try to get name from default key values
+	$account = campaignmonitor_get_field_key_values($uid);
+	$name = $account[$list->namekey];
+	
+	if ($user->uid != 0) {
     $email = $user->mail;
-    if (_campaignmonitor_is_subscribed(variable_get('campaignmonitor_api_key', ''), 
+    if (_campaignmonitor_is_subscribed(variable_get(CM_API_KEY, ''), 
 			$list_id, $email)) {
       $default = true;
 			// Also if subscribed get name
-			$subscriber = _campaignmonitor_get_subscriber(variable_get('campaignmonitor_api_key', ''),
+			$subscriber = _campaignmonitor_get_subscriber(variable_get(CM_API_KEY, ''),
 			  $list_id, $email);
-				//watchdog('campaignmonitor', 'subscriber: %subscriber', array('%subscriber' => print_r($subscriber, true)), WATCHDOG_DEBUG);
 			$name = $subscriber['name'];
     }
     else {
@@ -344,8 +452,7 @@ function campaignmonitor_subscribe_form(&$form_state, $list_id) {
 		'#default_value' => $email,
   );
 	
-	$custom_fields = _campaignmonitor_get_custom_fields(variable_get('campaignmonitor_api_key', ''), $list_id);
-	//watchdog('campaignmonitor', 'custom fields: %retval', array('%retval' => print_r($custom_fields, true)), WATCHDOG_INFO);
+	$custom_fields = _campaignmonitor_get_custom_fields(variable_get(CM_API_KEY, ''), $list_id);
 	foreach($custom_fields as $field) {
 		$key = str_replace('[','',$field['Key']);
 		$key = str_replace(']','',$key);
@@ -379,7 +486,7 @@ function campaignmonitor_subscribe_form(&$form_state, $list_id) {
 		  foreach($field['FieldOptions']['string'] as $option) {
 				$options[$option] = $option;
 			}
-			watchdog('campaignmonitor', 'options: %retval', array('%retval' => print_r($options, true)), WATCHDOG_INFO);
+			
 			$_defaultvalues = $subscriber['CustomFields'][$field['FieldName']];
 			if(empty($_defaultvalues)) {
 			  $defaultvalues = array();
@@ -387,7 +494,6 @@ function campaignmonitor_subscribe_form(&$form_state, $list_id) {
 				$defaultvalues = array();
 				$defaultvalues[] = $_defaultvalues;
 			} else  {
-				//watchdog('campaignmonitor', 'default value: %retval', array('%retval' => print_r($_defaultvalues, true)), WATCHDOG_DEBUG);
 				$defaultvalues = array();
 				foreach($_defaultvalues as $dv) {
 					$defaultvalues[] = $dv;
@@ -421,14 +527,12 @@ function campaignmonitor_subscribe_form_submit($form, &$form_state) {
   $form_values = $form_state['values'];
   
   // Replace api_key with your own details
-  $api_key = variable_get('campaignmonitor_api_key', '');
+  $api_key = variable_get(CM_API_KEY, '');
   
   $list_id = $form_values['list_id'];
   $name = $form_values['name'];
   $email = $form_values['email'];
 	$custom_field_array = array();
-	
-	watchdog('campaignmonitor', 'form_values: %retval', array('%retval' => print_r($form_values, true)), WATCHDOG_INFO);
 
   // any cases other then these are when things are unchanged
   if (!$form_values['unsubscribe_newsletter']) {
@@ -449,12 +553,12 @@ function campaignmonitor_subscribe_form_submit($form, &$form_state) {
 }
 
 function campaignmonitor_newsletter_archive() {
-  $url = variable_get('campaignmonitor_pastcampaignurl', '');
+  $url = variable_get(CM_PAST_CAMPAIGN_URL, '');
   if ($url == '') {
     $content = '<p>The past campaign URL has not been set. Please set this in the administration pages.</p>';
   }
   else{
-    $content = '<script type="text/javascript" src="'. variable_get('campaignmonitor_pastcampaignurl', '') .'"></script>';
+    $content = '<script type="text/javascript" src="'. variable_get(CM_PAST_CAMPAIGN_URL, '') .'"></script>';
   }
   return $content;
 }
@@ -466,17 +570,16 @@ function campaignmonitor_user_page() {
 function campaignmonitor_user_form() {
   global $user;
   // Replace api_key and list_id with your own details
-  $api_key = variable_get('campaignmonitor_api_key', '');
-  $client_id = variable_get('campaignmonitor_client_id', '');
-	$list_ids = campaignmonitor_get_available_lists();
-  $lists = _campaignmonitor_get_lists($api_key, $client_id); 
+  $api_key = variable_get(CM_API_KEY, '');
+  $client_id = variable_get(CM_CLIENT_ID, '');
+	$lists = campaignmonitor_get_available_lists();
   
   $email = $user->mail;
 	
 	$options = array();
 	$default_values = array();
 
-	foreach ($list_ids as $list_id => $list) {
+	foreach ($lists as $list_id => $list) {
 		if($list != '0') {
 			if (_campaignmonitor_is_subscribed($api_key, $list_id, $email, true)) {
 		    $default = true;
@@ -485,7 +588,7 @@ function campaignmonitor_user_form() {
 		  else {
 		    $default = false;
 		  }
-			$options[$list_id] = $lists[$list_id];
+			$options[$list_id] = $list->name;
 		  
 		  $form['is_subscribed_'.$list_id] = array(
 		    '#type'          => 'hidden',
@@ -495,7 +598,7 @@ function campaignmonitor_user_form() {
 	}
 	$form['subscribe_newsletter'] = array(
 		    '#type'          => 'checkboxes',
-				'#title'         => variable_get('campaignmonitor_userpagedisplaytext', 'Available Newsletters'),
+				'#title'         => variable_get(CM_USERPAGE_DISPLAY_TEXT, CM_USERPAGE_DISPLAY_TEXT_DEFAULT),
 				'#options'       => $options,
 		    '#default_value' => $default_values,
 		  );
@@ -507,31 +610,29 @@ function campaignmonitor_user_form() {
 function campaignmonitor_user_form_submit($form, &$form_state)  {
   $form_values = $form_state['values'];
   global $user;
-  // Check if the profile module is installed. If it is, use the name element of the profile
-	if (module_exists("profile")) {
-  	profile_load_profile($user->uid);
-		$profile_name = $user->profile_name;
-	}
+	$uid = $user->uid;
+	$lists = campaignmonitor_get_available_lists();
 	
-  $api_key = variable_get('campaignmonitor_api_key', '');
-  $client_id = variable_get('campaignmonitor_client_id', '');
+  // try to get name from default key values
+	$account = campaignmonitor_get_field_key_values($uid);
+	$name = $account[$list->namekey];
+	
+  $api_key = variable_get(CM_API_KEY, '');
+  $client_id = variable_get(CM_CLIENT_ID, '');
 	$lists = _campaignmonitor_get_lists($api_key, $client_id);
 	$chosen_lists = campaignmonitor_get_available_lists();
 	$subscribe = $form_values['subscribe_newsletter'];
   
-  $name = $profile_name;
   $email = $user->mail;
 
-	foreach($chosen_lists as $list_id => $listvalue) {
-		if($listvalue != '0') {
+	foreach($lists as $list_id => $list) {
+		if($list != '0') {
 			// if subscribed, add if not already subscribed
 		  if ($subscribe[$list_id] != null && !$form_values['is_subscribed_'.$list_id]) {
-		  	//watchdog('campaignmonitor','being subscribed');
 		    _campaignmonitor_add_subscriber($api_key, $list_id, $name, $email);
 		  }
 			// if not subscribed, and was subscribed before
 		  else if ($subscribe[$list_id] == null && $form_values['is_subscribed_'.$list_id]) {
-		  	//watchdog('campaignmonitor','being unsubscribed');
 		    _campaignmonitor_remove_subscriber($api_key, $list_id, $email);
 		  }
 		}
@@ -539,24 +640,124 @@ function campaignmonitor_user_form_submit($form, &$form_state)  {
 }
 
 function campaignmonitor_get_available_lists() {
-	$list_ids = variable_get('campaignmonitor_list_ids', array());
-	$toggle = variable_get('campaignmonitor_available_lists', 'all');
-	if($toggle == 'some') {
-		return $list_ids;
-	}
-	else {
-		$api_key = variable_get('campaignmonitor_api_key', '');
-  	$client_id = variable_get('campaignmonitor_client_id', '');
-		$ret = array();
-		$lists = _campaignmonitor_get_lists($api_key, $client_id);
-		foreach($lists as $list_id => $list_name) {
-			$ret[$list_id] = $list_id;
-		}
-		return $ret;
-	}
+	$all_lists = variable_get('campaignmonitor_lists', '');
+  $available_lists = array();
+  if (!empty($all_lists)) {
+    $all_lists = unserialize($all_lists);
+    foreach ($all_lists as $key => $list) {
+      $available_lists[$key] = $list;
+      
+    }
+  }
+
+  return $available_lists;
 }
 
 /* END MODULE FUNCTIONS */
+
+/* CUSTOM MODULE HOOKS */
+
+/**
+ * Get the available field keys
+ */
+function campaignmonitor_get_field_keys() {
+  return module_invoke_all('campaignmonitor_field_keys');
+}
+
+/**
+ * Get all the potential merge var values for a given user
+ */
+function campaignmonitor_get_field_key_values($uid) {
+  if ($user = user_load(array('uid' => $uid))) {
+    return module_invoke_all('campaignmonitor_field_key_values', $user);
+  }
+  return array();
+}
+
+/* END CUSTOM MODULE HOOKS */
+
+/* IMPLEMENTATION OF CUSTOM MODULE HOOKS */
+
+/**
+ * Implementation of hook_campaignmonitor_field_keys
+ */
+function campaignmonitor_campaignmonitor_field_keys() {
+  $out = array(0 => '<none>');
+	
+  $user_fields = array(
+      'name'      => t('Username'),
+      'mail'      => t('Email Address'),
+      'uid'       => t('User ID'),
+      'signature' => t("User's Signature"),
+      'created'   => t("User's Creation Date"),
+      'access'    => t("User's Last Access Date"),
+  );
+
+  foreach ($user_fields as $key => $field) {
+    $out[$key] = t('User: !field', array('!field' => $field));
+  }
+
+  if (function_exists('_profile_get_fields')) {
+    $categories = profile_categories();
+    if (!empty($categories)) {
+      foreach ($categories as $category) {
+        $result = _profile_get_fields($category['name'], $register);
+        while ($field = db_fetch_object($result)) {
+          $out[$field->name] = t('Profile: !cat - !field', array('!cat' => $field->category, '!field' => $field->title));
+        }
+      }
+    }
+  }
+
+  if (function_exists('token_get_list')) {
+    $tokens = token_get_list(array('user', 'order'));
+    if (is_array($tokens['user'])) {
+      foreach ($tokens['user'] as $token => $name) {
+        $out['token_'. $token] = t('Token: !field', array('!field' => $name));
+      }
+    }
+  }
+
+  return $out;
+}
+
+/**
+ * Implementation of hook_campaignmonitor_field_key_values
+ */
+function campaignmonitor_campaignmonitor_field_key_values($user) {
+  $out = array();
+  $out = (array)$user;
+  foreach ((array)$user as $key => $value) {
+    if (is_array($value) && $key != 'role') {
+      $out[$key] = implode('/', $value);
+    }
+    elseif (in_array($key, array('login', 'access', 'created'))) {
+      $out[$key] = date('c', $value);
+    }
+    elseif ($key != 'roles') {
+      $out[$key] = $value;
+    }
+  }
+  $out = array_merge($out, _campaignmonitor_get_user_tokens($user));
+  return $out;
+}
+
+/**
+ * Get the user tokens for merging
+ */
+function _campaignmonitor_get_user_tokens($user) {
+  $out = array();
+  if (function_exists('token_get_values')) {
+    $vars = token_get_values('user', $user);
+    foreach ($vars->tokens as $key => $value) {
+      $out['token_'. $value] = $vars->values[$key];
+    }
+  }
+  return $out;
+}
+
+/* END IMPLEMENTATION OF CUSTOM MODULE HOOKS */
+
 
 /* TEMPLATE FUNCTIONS */
 
@@ -589,7 +790,7 @@ function _campaignmonitor_is_subscribed($api_key, $list_id, $email, $show_errors
 		  			array('%code' => $result['anyType']['Code'], '%message' => $result['anyType']['Message']));
     $retval = FALSE;
     if ($show_errors) {
-      drupal_set_message(t("There is an error with the newsletter server. Please try again later."), 'error');
+      drupal_set_message(CM_ERROR, 'error');
     }
   } 
   else if ($result['anyType'] == 'False') {
@@ -612,10 +813,10 @@ function _campaignmonitor_add_subscriber($api_key, $list_id, $name, $email, $cus
   if ($result['anyType']['Code'] != 0) {
 	  watchdog('campaignmonitor', 'Code - %code, Message - %message', 
 		  			array('%code' => $result['anyType']['Code'], '%message' => $result['anyType']['Message']));
-    drupal_set_message(t("There was an error joining to newsletter."), 'error');
+    drupal_set_message(CM_SUBSCRIPTION_ERROR, 'error');
   }
   else {
-    drupal_set_message(t("You have successfully been added."), 'status');
+    drupal_set_message(CM_SUBSCRIPTION_SUCCESS, 'status');
   }
 }
 
@@ -624,12 +825,12 @@ function _campaignmonitor_remove_subscriber($api_key, $list_id, $email, $show_er
 
   $result = $cm->subscriberUnsubscribe($email);
   if ($result['Result']['Code'] == 0) {
-    drupal_set_message(t("You have successfully been unsubscribed."), 'status');
+    drupal_set_message(CM_UNSUBSCRIPTION_SUCCESS, 'status');
   }
   else {
 	  watchdog('campaignmonitor', 'Code - %code, Message - %message', 
 		  			array('%code' => $result['anyType']['Code'], '%message' => $result['anyType']['Message']));
-    drupal_set_message(t("There was an error unsubscribing from newsletter."), 'error');
+    drupal_set_message(CM_UNSUBSCRIPTION_ERROR, 'error');
   }
 }
 
@@ -639,26 +840,17 @@ function _campaignmonitor_get_subscriber($api_key, $list_id, $email, $show_error
 	
 	$result = $cm->subscriberGetSingleSubscriber($list_id, $email);
 
-  /*$result = $cm->makeCall( 'Subscribers.GetSingleSubscriber', array(
-                 'params' => array(
-                 'ListID' => $list_id,
-                 'EmailAddress' => $email)
-                  )
-                );*/
-
   if ($result['anyType']['Code'] != 0) {
 	  watchdog('campaignmonitor', 'Code - %code, Message - %message', 
 		  			array('%code' => $result['anyType']['Code'], '%message' => $result['anyType']['Message']));
     if ($show_errors) {
-      drupal_set_message(t("There is an error with the newsletter server. Please try again later."), 'error');
+      drupal_set_message(CM_ERROR, 'error');
     }
   }
   else {
-	  watchdog('campaignmonitor', 'retval: %retval', array('%retval' => print_r($result, true)), WATCHDOG_INFO);
     $retval['name'] = $result['anyType']['Name'];
 		$custom_fields = array();
 		$c = $result['anyType']['CustomFields']['SubscriberCustomField'];
-		//watchdog('campaignmonitor', 'customfields: %retval', array('%retval' => print_r($c, true)), WATCHDOG_INFO);
 		if (!empty($c['Key'])) {
 		  $custom_fields = array();
 			$custom_fields[$c['Key']] = $c['Value'];
@@ -667,15 +859,11 @@ function _campaignmonitor_get_subscriber($api_key, $list_id, $email, $show_error
 			if(!empty($c)) {
 		  foreach($c as $field) {
 			  if(!empty($custom_fields[$field['Key']])) {
-				  //watchdog('campaignmonitor', 'not empty');
 				  if(is_array($custom_fields[$field['Key']])) {
-					//watchdog('campaignmonitor', 'is array');
 					  $values = $custom_fields[$field['Key']];
 					}
 					else {
-					//watchdog('campaignmonitor', 'not array');
 					  $values = array();
-						//$values[$field['Key']] = $custom_fields[$field['Key']];
 						$values[] = $custom_fields[$field['Key']];
 					}
 					$values[] = $field['Value'];
@@ -698,14 +886,13 @@ function _campaignmonitor_get_lists($api_key, $client_id) {
   $result = $cm->clientGetLists();
 
   if ($result['anyType']['Code'] != 0) {
-	  watchdog('campaignmonitor', 'Code - %code, Message - %message', 
+	  watchdog('campaignmonitor', 'Get Lists: Code - %code, Message - %message', 
 		  			array('%code' => $result['anyType']['Code'], '%message' => $result['anyType']['Message']));
     if ($show_errors) {
-      drupal_set_message(t("There is an error with the newsletter server. Please try again later."), 'error');
+      drupal_set_message(CM_ERROR, 'error');
     }
   }
   else {
-		 //watchdog('campaignmonitor', 'retval: %retval', array('%retval' => print_r($result, true)), WATCHDOG_INFO);
     if (!empty($result['anyType']['List'])) {
 				$lists = $result['anyType']['List'];
 				// if there is only one list
@@ -722,6 +909,26 @@ function _campaignmonitor_get_lists($api_key, $client_id) {
   return $retval;
 }
 
+function _campaignmonitor_get_list_detail($api_key, $list_id) {
+	$retval = array();
+	$cm = new CampaignMonitor($api_key, $client_id, $campaign_id, $list_id);
+	
+	$result = $cm->listGetDetail($list_id);
+	
+	if ($result['anyType']['Code'] != 0) {
+	  watchdog('campaignmonitor', 'Get List Detail: Code - %code, Message - %message', 
+		  			array('%code' => $result['anyType']['Code'], '%message' => $result['anyType']['Message']));
+    if ($show_errors) {
+      drupal_set_message(CM_ERROR, 'error');
+    }
+  }
+  else {
+		$retval = $result['anyType'];
+  }
+  return $retval;
+
+}
+
 function _campaignmonitor_get_custom_fields($api_key, $list_id) {
 	$retval = array();
   $cm = new CampaignMonitor($api_key, $client_id, $campaign_id, $list_id );
@@ -729,15 +936,14 @@ function _campaignmonitor_get_custom_fields($api_key, $list_id) {
   $result = $cm->listGetCustomFields( $list_id );
 
   if ($result['anyType']['Code'] != 0) {
-	  watchdog('campaignmonitor', 'Code - %code, Message - %message', 
+	  watchdog('campaignmonitor', 'Get Custom Fields: Code - %code, Message - %message', 
 		  			array('%code' => $result['anyType']['Code'], '%message' => $result['anyType']['Message']));
     if ($show_errors) {
-      drupal_set_message(t("There is an error with the newsletter server. Please try again later."), 'error');
+      drupal_set_message(CM_ERROR, 'error');
     }
   }
   else {
-		watchdog('campaignmonitor', 'retval: %retval', array('%retval' => print_r($result, true)), WATCHDOG_INFO);
-    if (!empty($result['anyType']['ListCustomField'])) {
+		if (!empty($result['anyType']['ListCustomField'])) {
 				
 				// if there is only one list
 				if (!empty($result['anyType']['ListCustomField']['FieldName'])) {
@@ -746,80 +952,8 @@ function _campaignmonitor_get_custom_fields($api_key, $list_id) {
 				}
 				else {
 					$retval = $result['anyType']['ListCustomField'];
-					//foreach($lists as $list) {
-					//	$retval[$list['ListID']] = $list['Name'];
-				  //}
 			  }
 		}
   }
   return $retval;
 }
-
-function _campaignmonitor_fetch_lists_submit($form, &$form_state) {
-  // @todo:
-}
-/* END SOAP CALLS AND HELPERS */
-
-/* JAVASCRIPT FUNCTIONS */
-function campaignmonitor_lists_js() {
-  $form_state = array(
-	'storage' => NULL,
-	'submitted' => FALSE,
-  );
-  $form_build_id = $_POST['form_build_id'];
-
-  // Get the form from the cache.
-  $form = form_get_cache($form_build_id, $form_state);
-  $args = $form['#parameters'];
-  $form_id = array_shift($args);
-
-  // We will run some of the submit handlers so we need to disable redirecting.
-  $form['#redirect'] = FALSE;
-
-  // We need to process the form, prepare for that by setting a few internal variables.
-  $form['#post'] = $_POST;
-  $form['#programmed'] = FALSE;
-  $form_state['post'] = $_POST;
-
-  // Build, validate and if possible, submit the form.
-  drupal_process_form($form_id, $form, $form_state);
-
-  // This call recreates the form relying solely on the form_state that the
-  // drupal_process_form set up.
-  $form = drupal_rebuild_form($form_id, $form_state, $args, $form_build_id);
-
-  // Render the new output.
-  $lists_form = $form['campaignmonitor_lists_wrapper']['campaignmonitor_list_ids'];
-  unset($choice_form['#prefix'], $choice_form['#suffix']); // Prevent duplicate wrappers.
-
-  $lists_type = $form_state['post']['campaignmonitor_available_lists'];
-  switch ($lists_type) {
-	case 'all':
-	  $output = theme('status_messages') . t('All the lists from this client will be available to the users.');
-	  break;
-
-	case 'some':
-	  // Make sure the API key and Client ID are filled in.
-	  if (empty($form_state['post']['campaignmonitor_client_id']) || empty($form_state['post']['campaignmonitor_api_key'])) {
-			form_set_error('fetch_lists', t('Please enter the API key and client ID first.'));
-			$output = theme('status_messages');
-	  }
-	  else {
-			$lists = _campaignmonitor_get_lists($form_state['post']['campaignmonitor_api_key'], $form_state['post']['campaignmonitor_client_id']);
-			$output = theme('status_messages') . '<div class="form-checkboxes">';
-			$i = 0;
-			foreach ($lists as $key => $value) {
-			  $output .= '<div id="edit-lists-' . $key . '-wrapper" class="form-item">'
-				. '<label class="option"><input type="checkbox" name="campaignmonitor_list_ids[' . $key . ']" value="'.$key.'" /></label> ' . $value
-				. '</div>';
-			  $i++;
-			}
-			$output .= '</div>';
-	  }
-	  break;
-	}
-
-	drupal_json(array('status' => TRUE, 'data' => $output));
-  }
-
-/* END JAVASCRIPT FUNCTIONS */

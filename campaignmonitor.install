@@ -5,8 +5,7 @@ function campaignmonitor_uninstall() {
   variable_del('campaignmonitor_userpagedisplaytext');
   variable_del('campaignmonitor_checkboxdisplaytext');
   variable_del('campaignmonitor_client_id');
-  variable_del('campaignmonitor_available_lists');
-  variable_del('campaignmonitor_list_ids');
+  variable_del('campaignmonitor_lists');
 	variable_del('campaignmonitor_display_on');
   variable_del('campaignmonitor_api_key');
 	variable_del('campaignmonitor_pastcampaignurl');
@@ -21,18 +20,9 @@ function campaignmonitor_update_6200() {
 	
 	$list_id = variable_get('campaignmonitor_list_id', '');
 	if($list_id != '') {
-	  variable_set('campaignmonitor_available_lists','some');	
-	  $lists = array($list_id => $list_id);
-	  variable_set('campaignmonitor_list_ids', $lists);
-	}
-	else {
-		if(variable_get('campaignmonitor_available_lists', '') == '') {
-		  variable_set('campaignmonitor_available_lists','all');
-		}
+		$ret[] = array('success' => TRUE, 'query' => 'You have now updated to multi list format, please make sure you go to the admin page to update your list details.');
 	}
 	variable_del('campaignmonitor_list_id');
 	
-	$ret[] = array('success' => TRUE, 'query' => 'Updated single list format to multiple list format.');
-
-    return $ret;
+  return $ret;
 }
