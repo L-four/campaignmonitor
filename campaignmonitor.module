@@ -28,6 +28,7 @@ define('CM_USERPAGE_DISPLAY_TEXT', 'campaignmonitor_userpagedisplaytext');
 define('CM_PAST_CAMPAIGN_URL', 'campaignmonitor_pastcampaignurl');
 define('CM_CONNECTION_TIMEOUT', 'campaignmonitor_connection_timeout');
 define('CM_LISTS', 'campaignmonitor_lists');
+define('CM_LISTS_CF', 'campaignmonitor_lists_customfields');
  
  @require_once(drupal_get_path('module', 'campaignmonitor') .'/lib/CMBase.php');
 
@@ -305,6 +306,7 @@ function campaignmonitor_admin() {
       $saved_list = $saved_lists[$list_id];
     
       $list_detail = _campaignmonitor_get_list_detail($api_key, $list_id);
+			$list_custom_fields = _campaignmonitor_get_custom_fields($api_key, $list_id);
       
       $details = t('<p>Confirm Opt in: %optin<br/>Unsubscribe Page: %unsub<br/>Confirmation Success Page: %conf</p>', array('%optin' => $list_detail['ConfirmOptIn'], '%unsub' => $list_detail['UnsubscribePage'], '%conf' => $list_detail['ConfirmationSuccessPage']));
       
@@ -358,8 +360,42 @@ function campaignmonitor_admin() {
         '#options'        => $keyoptions,
         '#default_value'  => $saved_list->namekey,
       );
-      
-      $custom_fields = _campaignmonitor_get_custom_fields(variable_get(CM_API_KEY, ''), $list_id);
+			
+			if(count($list_custom_fields) > 0) {
+			
+				$form[CM_LISTS]['campaignmonitor_list_'. $list_id][CM_LISTS_CF] = array(
+					'#type'       => 'fieldset',
+					'#collapsible' => TRUE,
+					'#collapsed' => TRUE,
+					'#title'      => t('Custom Fields'),
+				);
+				
+				$saved_cfs = $saved_list->customfields;
+				
+				foreach($list_custom_fields as $cf) {
+					$key = str_replace('[', '', $cf['Key']);
+					$key = str_replace(']', '', $key);
+					$saved_cf = $saved_cfs[$key];
+					if($saved_cfs == NULL) {
+						$default_cfs = true;
+					} else {
+						$default_cfs = $saved_cf->display;
+					}
+					
+					$form[CM_LISTS]['campaignmonitor_list_'. $list_id][CM_LISTS_CF]['custom_field_'. $key]['cf_id'] = array(
+						'#type'       => 'value',
+						'#value'      => $key,
+					);
+				
+					$form[CM_LISTS]['campaignmonitor_list_'. $list_id][CM_LISTS_CF]['custom_field_'. $key]['display'] = array(
+						'#type'       => 'checkbox',
+						'#title'      => $cf['FieldName'],
+						'#description' => t('Display this custom field in the subscribe forms.'),
+						'#default_value'  => $default_cfs,
+					);
+				
+				}
+			}
       
     }
   }
@@ -392,6 +428,19 @@ function campaignmonitor_admin_settings_validate($form, &$form_state) {
     $list->onregopage = $form_list['onregopage'];
     //$list->displayname = $form_list['displayname'];
     $list->namekey = $form_list['namekey'];
+		
+		
+		$customfields = array();
+		if(is_array($form_list[CM_LISTS_CF])) {
+			foreach($form_list[CM_LISTS_CF] as $cf_list) {
+				$customfield = new stdClass();
+				$customfield->id = $cf_list['cf_id'];
+				$customfield->display = $cf_list['display'];
+				$customfields[$cf_list['cf_id']] = $customfield;
+			}
+			$list->customfields = $customfields;
+		}
+		
     $lists[$form_list['list_id']] = $list;
   }
   
@@ -457,61 +506,73 @@ function campaignmonitor_subscribe_form(&$form_state, $list_id) {
   foreach ($custom_fields as $field) {
     $key = str_replace('[', '', $field['Key']);
     $key = str_replace(']', '', $key);
-    if ($field['FieldName'] == 'Text') {
-      $form[$key] = array(
-        '#type'          => 'textfield',
-        '#title'         => $field['FieldName'],
-        '#size'          => 20,
-        '#maxlength'     => 100,
-        '#default_value' => $subscriber['CustomFields'][$field['FieldName']],
-      );
-    } 
-    else if ($field['DataType'] == 'MultiSelectOne') {
-      $options = array();
-      foreach ($field['FieldOptions']['string'] as $option) {
-        $options[$option] = $option;
-      }
-      $_defaultvalue = $subscriber['CustomFields'][$field['FieldName']];
-      if (empty($_defaultvalue)) {
-        $defaultvalue = '';
-      } 
-      else {
-        $defaultvalue = $_defaultvalue;
-      }
-      $form[$key] = array(
-        '#type'          => 'select',
-        '#title'         => $field['FieldName'],
-        '#options'       => $options,
-        '#default_value' => $defaultvalue,
-      );
-    } 
-    else if ($field['DataType'] == 'MultiSelectMany') {
-      $options = array();
-      foreach ($field['FieldOptions']['string'] as $option) {
-        $options[$option] = $option;
-      }
-      
-      $_defaultvalues = $subscriber['CustomFields'][$field['FieldName']];
-      if (empty($_defaultvalues)) {
-        $defaultvalues = array();
-      } 
-      else if (!is_array($_defaultvalues)) {
-        $defaultvalues = array();
-        $defaultvalues[] = $_defaultvalues;
-      }
-       else {
-        $defaultvalues = array();
-        foreach ($_defaultvalues as $dv) {
-          $defaultvalues[] = $dv;
-        }
-      }
-      $form[$key] = array(
-        '#type'          => 'checkboxes',
-        '#title'         => $field['FieldName'],
-        '#options'       => $options,
-        '#default_value' => $defaultvalues,
-      );
-    }
+		
+		$saved_cfs = $list->customfields;
+		$display_cf = false;
+		if($saved_cfs == NULL) { // case that upgraded and haven't gone to admin page yet, make sure to display as that would keep same behavior
+			$display_cf = true;
+		} else {
+			$saved_cf = $saved_cfs[$key];
+			$display_cf = $saved_cf->display;
+		}
+		
+		if($display_cf) {
+			if ($field['FieldName'] == 'Text') {
+				$form[$key] = array(
+					'#type'          => 'textfield',
+					'#title'         => $field['FieldName'],
+					'#size'          => 20,
+					'#maxlength'     => 100,
+					'#default_value' => $subscriber['CustomFields'][$field['FieldName']],
+				);
+			} 
+			else if ($field['DataType'] == 'MultiSelectOne') {
+				$options = array();
+				foreach ($field['FieldOptions']['string'] as $option) {
+					$options[$option] = $option;
+				}
+				$_defaultvalue = $subscriber['CustomFields'][$field['FieldName']];
+				if (empty($_defaultvalue)) {
+					$defaultvalue = '';
+				} 
+				else {
+					$defaultvalue = $_defaultvalue;
+				}
+				$form[$key] = array(
+					'#type'          => 'select',
+					'#title'         => $field['FieldName'],
+					'#options'       => $options,
+					'#default_value' => $defaultvalue,
+				);
+			} 
+			else if ($field['DataType'] == 'MultiSelectMany') {
+				$options = array();
+				foreach ($field['FieldOptions']['string'] as $option) {
+					$options[$option] = $option;
+				}
+				
+				$_defaultvalues = $subscriber['CustomFields'][$field['FieldName']];
+				if (empty($_defaultvalues)) {
+					$defaultvalues = array();
+				} 
+				else if (!is_array($_defaultvalues)) {
+					$defaultvalues = array();
+					$defaultvalues[] = $_defaultvalues;
+				}
+				 else {
+					$defaultvalues = array();
+					foreach ($_defaultvalues as $dv) {
+						$defaultvalues[] = $dv;
+					}
+				}
+				$form[$key] = array(
+					'#type'          => 'checkboxes',
+					'#title'         => $field['FieldName'],
+					'#options'       => $options,
+					'#default_value' => $defaultvalues,
+				);
+			}
+		}
   }
   
   /*$form['unsubscribe_newsletter'] = array(
@@ -539,6 +600,9 @@ function campaignmonitor_subscribe_form_submit($form, &$form_state) {
   $name = $form_values['name'];
   $email = $form_values['email'];
   $custom_field_array = array();
+	
+	$lists = campaignmonitor_get_available_lists();
+  $list = $lists[$list_id];
 
   // any cases other then these are when things are unchanged
   if (!$form_values['unsubscribe_newsletter']) {
@@ -547,7 +611,19 @@ function campaignmonitor_subscribe_form_submit($form, &$form_state) {
     foreach ($custom_fields as $field) {
       $key = str_replace('[', '', $field['Key']);
       $key = str_replace(']', '', $key);
-      $custom_field_array[$field['FieldName']] = $form_values[$key]; 
+			
+			$saved_cfs = $list->customfields;
+			$display_cf = false;
+			if($saved_cfs == NULL) { // case that upgraded and haven't gone to admin page yet, make sure to display as that would keep same behavior
+				$display_cf = true;
+			} else {
+				$saved_cf = $saved_cfs[$key];
+				$display_cf = $saved_cf->display;
+			}
+			
+			if($display_cf) {
+      	$custom_field_array[$field['FieldName']] = $form_values[$key]; 
+			}
     }
     
     _campaignmonitor_add_subscriber($api_key, $list_id, $name, $email, $custom_field_array);
