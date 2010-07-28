@@ -517,7 +517,7 @@ function campaignmonitor_subscribe_form(&$form_state, $list_id) {
 		}
 		
 		if($display_cf) {
-			if ($field['FieldName'] == 'Text') {
+			if ($field['DataType'] == 'Text') {
 				$form[$key] = array(
 					'#type'          => 'textfield',
 					'#title'         => $field['FieldName'],
@@ -570,6 +570,15 @@ function campaignmonitor_subscribe_form(&$form_state, $list_id) {
 					'#title'         => $field['FieldName'],
 					'#options'       => $options,
 					'#default_value' => $defaultvalues,
+				);
+			}
+			else if ($field['DataType'] == 'Number') {
+				$form[$key] = array(
+					'#type'          => 'textfield',
+					'#title'         => $field['FieldName'],
+					'#size'          => 20,
+					'#maxlength'     => 100,
+					'#default_value' => $subscriber['CustomFields'][$field['FieldName']],
 				);
 			}
 		}
