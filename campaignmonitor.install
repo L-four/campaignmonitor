@@ -1,5 +1,4 @@
 <?php
-// $Id$
 
 function campaignmonitor_uninstall() {
   variable_del('campaignmonitor_userpagedisplaytext');
