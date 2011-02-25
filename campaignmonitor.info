@@ -1,4 +1,3 @@
-; $Id$
 name = Campaign Monitor
 description = "This module uses the Campaign Monitor API to add newsletter checkboxes to each form you like, plus allow people to subscribe, unsubscribe and view past campaigns."
 core = 6.x

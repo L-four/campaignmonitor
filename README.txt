@@ -4,7 +4,6 @@
 \paperw11900\paperh16840\margl1440\margr1440\vieww19920\viewh15780\viewkind0
 \pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\ql\qnatural\pardirnatural
 
-\f0\fs24 \cf0 $Id$\
 \
 Campaign Monitor\
 =========\
