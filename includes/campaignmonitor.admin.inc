@@ -1,19 +1,24 @@
 <?php
 
-function campaignmonitor_admin() {
+/*
+ * @file
+ * Implementation of the administration interface for the module.
+ */
 
-  $api_key = variable_get(CM_API_KEY, '');
+/**
+ * Menu callback that creates the administartion settings form.
+ *
+ * @return array $form
+ */
+function campaignmonitor_admin() {
+  $api_key = variable_get(CM_API_KEY, FALSE);
   $client_id = variable_get(CM_CLIENT_ID, '');
 
-  if ($api_key == '' && $client_id == '') {
-    $collapsed = FALSE;
-    $collapsible = FALSE;
-    $is_setup = FALSE;
-  }
-  else {
+  $collapsed = FALSE;
+  $collapsible = FALSE;
+  if ($api_key) {
     $collapsed = TRUE;
     $collapsible = TRUE;
-    $is_setup = TRUE;
   }
 
   $form['campaignmonitor_account_details'] = array(
@@ -43,15 +48,12 @@ function campaignmonitor_admin() {
       '#description' => t('Your Campaign Monitor Client ID. See <a href="http://www.campaignmonitor.com/api/required/">documentation</a>.')
   );
 
-  if ($is_setup) {
-
+  if ($api_key) {
+    // Set default values
     $display_on = variable_get(CM_DISPLAY_ON, array());
     $display_text = variable_get(CM_CHECKBOX_DISPLAY_TEXT, CM_CHECKBOX_DISPLAY_TEXT_DEFAULT);
     $past_campaign_url = variable_get(CM_PAST_CAMPAIGN_URL, '');
     $connection_timeout = variable_get(CM_CONNECTION_TIMEOUT, CM_CONNECTION_TIMEOUT_DEFAULT);
-
-    $collapsed = TRUE;
-    $collapsible = TRUE;
 
     $form['campaignmonitor_general_options'] = array(
         '#type' => 'fieldset',
@@ -107,6 +109,7 @@ function campaignmonitor_admin() {
         '#description' => t("If your server can't get through to the API, or the API server is down, this is the amount of time until the connection times out in seconds. Default is %default seconds.", array('%default' => CM_CONNECTION_TIMEOUT_DEFAULT))
     );
 
+    // Load lists form campaign monitor and default values.
     $available_lists = _campaignmonitor_get_lists($api_key, $client_id);
     $saved_lists = unserialize(variable_get(CM_LISTS, ''));
 
@@ -218,8 +221,8 @@ function campaignmonitor_admin() {
     }
   }
 
+  // Add extra form funtion callbacks.
   $form['#validate'][] = 'campaignmonitor_admin_settings_validate';
-
   $form['#submit'][] = 'campaignmonitor_admin_submit';
 
   return system_settings_form($form);
@@ -228,8 +231,8 @@ function campaignmonitor_admin() {
 /**
  * Validate the admin settings and serialize the saved lists into objects.
  *
- * @param <type> $form
- * @param <type> $form_state
+ * @param array $form
+ * @param array $form_state
  */
 function campaignmonitor_admin_settings_validate($form, &$form_state) {
   // no lists selected or first time here
@@ -267,7 +270,13 @@ function campaignmonitor_admin_settings_validate($form, &$form_state) {
   variable_set(CM_LISTS, serialize($lists));
 }
 
+/**
+ * Administration form submit function blocks are rebuild as we've possibly
+ * changed blocks.
+ *
+ * @param array $form
+ * @param array $form_state
+ */
 function campaignmonitor_admin_submit($form, &$form_state) {
-  // rebuild the block db table as we've possibly changed the blocks
   _block_rehash();
 }
