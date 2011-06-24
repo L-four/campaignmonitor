@@ -31,3 +31,14 @@ function campaignmonitor_update_6200() {
 
   return $ret;
 }
+
+/**
+ * Removes double serialization of lists in the database.
+ */
+function campaignmonitor_update_6300() {
+  $lists = variable_get('campaignmonitor_lists', array());
+  if (!empty($lists) && !is_array($lists)) {
+    $lists = unserialize($lists);
+    variable_set('campaignmonitor_lists', $lists);
+  }
+}

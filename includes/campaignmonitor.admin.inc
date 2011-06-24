@@ -111,7 +111,7 @@ function campaignmonitor_admin() {
 
     // Load lists form campaign monitor and default values.
     $available_lists = _campaignmonitor_get_lists($api_key, $client_id);
-    $saved_lists = unserialize(variable_get(CM_LISTS, ''));
+    $saved_lists = variable_get(CM_LISTS, '');
 
     $collapsed = FALSE;
     $collapsible = TRUE;
@@ -229,7 +229,7 @@ function campaignmonitor_admin() {
 }
 
 /**
- * Validate the admin settings and serialize the saved lists into objects.
+ * Validate the admin settings and load the saved lists.
  *
  * @param array $form
  * @param array $form_state
@@ -267,7 +267,7 @@ function campaignmonitor_admin_settings_validate($form, &$form_state) {
 
   // remove lists from the form_state
   unset($form_state['values'][CM_LISTS]);
-  variable_set(CM_LISTS, serialize($lists));
+  variable_set(CM_LISTS, $lists);
 }
 
 /**

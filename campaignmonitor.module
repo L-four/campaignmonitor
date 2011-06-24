@@ -403,7 +403,6 @@ function campaignmonitor_get_available_lists() {
   $all_lists = variable_get('campaignmonitor_lists', '');
   $available_lists = array();
   if (!empty($all_lists)) {
-    $all_lists = unserialize($all_lists);
     foreach ($all_lists as $key => $list) {
       $available_lists[$key] = $list;
     }
