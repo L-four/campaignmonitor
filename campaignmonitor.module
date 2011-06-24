@@ -76,9 +76,11 @@ function campaignmonitor_menu() {
 
   $items['user/%user/newsletters'] = array(
     'title' => t('My Newsletters'),
-    'page callback' => 'campaignmonitor_user_page',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('campaignmonitor_user_page_form'),
     'access arguments' => array('join newsletter'),
     'type' => MENU_LOCAL_TASK,
+    'file' => 'includes/campaignmonitor.user_page.inc',
     'weight' => 5,
   );
 
@@ -91,7 +93,8 @@ function campaignmonitor_menu() {
  */
 function campaignmonitor_form_alter(&$form, $form_state, $form_id) {
   $display_on = variable_get(CM_DISPLAY_ON, array());
-  if (('contact_mail_page' == $form_id && $display_on['contact'] != '0') || ('user_register' == $form_id && $display_on['registration'] != '0') && user_access('join newsletter')) {
+  if (('contact_mail_page' == $form_id && $display_on['contact'] != '0') ||
+      ('user_register' == $form_id && $display_on['registration'] != '0') && user_access('join newsletter')) {
     $api_key = variable_get(CM_API_KEY, '');
     $client_id = variable_get(CM_CLIENT_ID, '');
     $lists = campaignmonitor_get_available_lists();
@@ -120,6 +123,7 @@ function campaignmonitor_form_alter(&$form, $form_state, $form_id) {
     }
   }
 }
+
 
 function _campaignmonitor_altered_form_submit($form, &$form_state) {
   $form_values = $form_state['values'];
@@ -395,83 +399,6 @@ function campaignmonitor_newsletter_archive() {
   return $content;
 }
 
-function campaignmonitor_user_page() {
-  return drupal_get_form('campaignmonitor_user_form');
-}
-
-function campaignmonitor_user_form() {
-  global $user;
-  // Replace api_key and list_id with your own details
-  $api_key = variable_get(CM_API_KEY, '');
-  $client_id = variable_get(CM_CLIENT_ID, '');
-  $lists = campaignmonitor_get_available_lists();
-
-  $email = $user->mail;
-
-  $options = array();
-  $default_values = array();
-
-  foreach ($lists as $list_id => $list) {
-    if ($list != '0') {
-      if (_campaignmonitor_is_subscribed($api_key, $list_id, $email, TRUE)) {
-        $default = TRUE;
-        $default_values[] = $list_id;
-      }
-      else {
-        $default = FALSE;
-      }
-      $options[$list_id] = $list->name;
-
-      $form['is_subscribed_' . $list_id] = array(
-          '#type' => 'hidden',
-          '#default_value' => $default,
-      );
-    }
-  }
-
-  $form['subscribe_newsletter'] = array(
-      '#type' => 'checkboxes',
-      '#title' => variable_get(CM_USERPAGE_DISPLAY_TEXT, CM_USERPAGE_DISPLAY_TEXT_DEFAULT),
-      '#options' => $options,
-      '#default_value' => $default_values,
-  );
-
-  $form['submit'] = array('#type' => 'submit', '#value' => t('Save'));
-  return $form;
-}
-
-function campaignmonitor_user_form_submit($form, &$form_state) {
-  $form_values = $form_state['values'];
-  global $user;
-  $uid = $user->uid;
-  $lists = campaignmonitor_get_available_lists();
-
-  // try to get name from default key values
-  $account = campaignmonitor_get_field_key_values($uid);
-  $name = $account[$list->namekey];
-
-  $api_key = variable_get(CM_API_KEY, '');
-  $client_id = variable_get(CM_CLIENT_ID, '');
-  $lists = _campaignmonitor_get_lists($api_key, $client_id);
-  $chosen_lists = campaignmonitor_get_available_lists();
-  $subscribe = $form_values['subscribe_newsletter'];
-
-  $email = $user->mail;
-
-  foreach ($lists as $list_id => $list) {
-    if ($list != '0') {
-      // if subscribed, add if not already subscribed
-      if ($subscribe[$list_id] != NULL && !$form_values['is_subscribed_' . $list_id]) {
-        _campaignmonitor_add_subscriber($api_key, $list_id, $name, $email);
-      }
-      // if not subscribed, and was subscribed before
-      elseif ($subscribe[$list_id] == NULL && $form_values['is_subscribed_' . $list_id]) {
-        _campaignmonitor_remove_subscriber($api_key, $list_id, $email);
-      }
-    }
-  }
-}
-
 function campaignmonitor_get_available_lists() {
   $all_lists = variable_get('campaignmonitor_lists', '');
   $available_lists = array();
@@ -481,7 +408,7 @@ function campaignmonitor_get_available_lists() {
       $available_lists[$key] = $list;
     }
   }
-
+  
   return $available_lists;
 }
 
