@@ -48,13 +48,9 @@ function campaignmonitor_admin() {
       '#description' => t('Your Campaign Monitor Client ID. See <a href="http://www.campaignmonitor.com/api/required/">documentation</a>.')
   );
 
+  // List options for the lists featched from the campaign monintor account, If
+  // API key is defined.
   if ($api_key) {
-    // Set default values
-    $display_on = variable_get(CM_DISPLAY_ON, array());
-    $display_text = variable_get(CM_CHECKBOX_DISPLAY_TEXT, CM_CHECKBOX_DISPLAY_TEXT_DEFAULT);
-    $past_campaign_url = variable_get(CM_PAST_CAMPAIGN_URL, '');
-    $connection_timeout = variable_get(CM_CONNECTION_TIMEOUT, CM_CONNECTION_TIMEOUT_DEFAULT);
-
     $form['campaignmonitor_general_options'] = array(
         '#type' => 'fieldset',
         '#collapsible' => $collapsible,
@@ -65,7 +61,7 @@ function campaignmonitor_admin() {
     $form['campaignmonitor_general_options'][CM_DISPLAY_ON] = array(
         '#type' => 'checkboxes',
         '#title' => t('Display Options'),
-        '#default_value' => $display_on,
+        '#default_value' => variable_get(CM_DISPLAY_ON, array()),
         '#options' => array(
             'contact' => t('Contact Page'),
             'registration' => t('Registration Page')
@@ -76,7 +72,7 @@ function campaignmonitor_admin() {
     $form['campaignmonitor_general_options'][CM_CHECKBOX_DISPLAY_TEXT] = array(
         '#type' => 'textfield',
         '#title' => t('Display Text for Checkbox'),
-        '#default_value' => $display_text,
+        '#default_value' => variable_get(CM_CHECKBOX_DISPLAY_TEXT, CM_CHECKBOX_DISPLAY_TEXT_DEFAULT),
         '#size' => 50,
         '#maxlength' => 50,
         '#description' => t("This text will display next to the checkbox on the selected forms.")
@@ -103,7 +99,7 @@ function campaignmonitor_admin() {
     $form['campaignmonitor_general_options'][CM_CONNECTION_TIMEOUT] = array(
         '#type' => 'textfield',
         '#title' => t('Connection timeout'),
-        '#default_value' => $connection_timeout,
+        '#default_value' => variable_get(CM_CONNECTION_TIMEOUT, CM_CONNECTION_TIMEOUT_DEFAULT),
         '#size' => 10,
         '#maxlength' => 10,
         '#description' => t("If your server can't get through to the API, or the API server is down, this is the amount of time until the connection times out in seconds. Default is %default seconds.", array('%default' => CM_CONNECTION_TIMEOUT_DEFAULT))
