@@ -187,6 +187,7 @@ function campaignmonitor_theme() {
  * A block is returned for each CampaignMonitor list chosen in admin settings
  */
 function campaignmonitor_block_list() {
+  $blocks = array();
   $lists = campaignmonitor_get_available_lists();
   foreach ($lists as $list_id => $list) {
     // If list==0 that means that list is not chosen, don't create a block
