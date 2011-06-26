@@ -61,7 +61,7 @@ function campaignmonitor_menu() {
     'title' => t('Campaign Monitor'),
     'description' => t('Setup Campaign Monitor values.'),
     'page callback' => 'drupal_get_form',
-    'page arguments' => array('campaignmonitor_admin'),
+    'page arguments' => array('campaignmonitor_admin_settings_form'),
     'access arguments' => array('administer campaignmonitor'),
     'type' => MENU_NORMAL_ITEM,
     'file' => 'includes/campaignmonitor.admin.inc',
@@ -417,8 +417,8 @@ function campaignmonitor_get_available_lists() {
 /**
  * Get the available field keys
  */
-function campaignmonitor_get_field_keys() {
-  return module_invoke_all('campaignmonitor_field_keys');
+function campaignmonitor_get_field_keys($reset = FALSE) {
+  return module_invoke_all('campaignmonitor_field_keys', $reset);
 }
 
 /**
@@ -438,44 +438,49 @@ function campaignmonitor_get_field_key_values($uid) {
 /**
  * Implementation of hook_campaignmonitor_field_keys
  */
-function campaignmonitor_campaignmonitor_field_keys() {
-  $out = array(0 => '<none>');
+function campaignmonitor_campaignmonitor_field_keys($reset = FALSE) {
+  static $output;
+  if (!isset($output) || $reset) {
+    $output = array(0 => '<none>');
 
-  $user_fields = array(
+    // Add user information fields.
+    $user_fields = array(
       'name' => t('Username'),
       'mail' => t('Email Address'),
       'uid' => t('User ID'),
       'signature' => t("User's Signature"),
       'created' => t("User's Creation Date"),
       'access' => t("User's Last Access Date"),
-  );
+    );
 
-  foreach ($user_fields as $key => $field) {
-    $out[$key] = t('User: !field', array('!field' => $field));
-  }
+    foreach ($user_fields as $key => $field) {
+      $output[$key] = t('User: !field', array('!field' => $field));
+    }
 
-  if (function_exists('_profile_get_fields')) {
-    $categories = profile_categories();
-    if (!empty($categories)) {
-      foreach ($categories as $category) {
-        $result = _profile_get_fields($category['name'], $register);
-        while ($field = db_fetch_object($result)) {
-          $out[$field->name] = t('Profile: !cat - !field', array('!cat' => $field->category, '!field' => $field->title));
+    // If the profile module is avaliable, get fields from it.
+    if (function_exists('_profile_get_fields')) {
+      $categories = profile_categories();
+      if (!empty($categories)) {
+        foreach ($categories as $category) {
+          $result = _profile_get_fields($category['name'], $register);
+          while ($field = db_fetch_object($result)) {
+            $output[$field->name] = t('Profile: !cat - !field', array('!cat' => $field->category, '!field' => $field->title));
+          }
+        }
+      }
+    }
+
+    if (function_exists('token_get_list')) {
+      $tokens = token_get_list(array('user', 'order'));
+      if (is_array($tokens['user'])) {
+        foreach ($tokens['user'] as $token => $name) {
+          $output['token_' . $token] = t('Token: !field', array('!field' => $name));
         }
       }
     }
   }
 
-  if (function_exists('token_get_list')) {
-    $tokens = token_get_list(array('user', 'order'));
-    if (is_array($tokens['user'])) {
-      foreach ($tokens['user'] as $token => $name) {
-        $out['token_' . $token] = t('Token: !field', array('!field' => $name));
-      }
-    }
-  }
-
-  return $out;
+  return $output;
 }
 
 /**
