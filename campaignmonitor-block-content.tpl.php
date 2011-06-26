@@ -1,4 +1,8 @@
 <p>
   <?php print $form; ?>
 </p>
-<?php print $archive_link ?>
+<?php
+  if (isset($archive_link)) {
+    print $archive_link;
+  }
+?>

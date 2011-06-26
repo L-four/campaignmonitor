@@ -525,16 +525,15 @@ function _campaignmonitor_get_user_tokens($user) {
 /* TEMPLATE FUNCTIONS */
 
 /**
- * Block template preprocessor
+ * Implementation of preprocess_campaignmontor_block_content(). Which adds a
+ * newsletter archive link, if the archive URL is defined and user access is
+ * granted.
  */
 function template_preprocess_campaignmonitor_block_content(&$variables) {
   $variables['form'] = drupal_get_form('campaignmonitor_subscribe_form', $variables['list_id']);
-
-  if (user_access('access archive')) {
+  $past_campaign_url = variable_get(CM_PAST_CAMPAIGN_URL, FALSE);
+  if (user_access('access archive') && $past_campaign_url) {
     $variables['archive_link'] = l('Newsletter Archive', 'newsletter_archive');
-  }
-  else {
-    $variables['archive_link'] = '';
   }
 }
 
