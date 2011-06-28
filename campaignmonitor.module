@@ -137,11 +137,10 @@ function _campaignmonitor_altered_form_submit($form, &$form_state) {
     // Replace api_key and list_id with your own details
     $api_key = variable_get(CM_API_KEY, '');
 
-    $email = $form_values['mail'];
-    $name = $form_values['name'];
-
     foreach ($listids as $list_id) {
-      _campaignmonitor_add_subscriber($api_key, $list_id, $name, $email);
+      if ($list_id) {
+        _campaignmonitor_add_subscriber($api_key, $list_id, $form_values['name'], $form_values['mail']);
+      }
     }
   }
 }
