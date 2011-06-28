@@ -12,39 +12,58 @@
  */
 function campaignmonitor_user_page_form() {
   global $user;
-  // Replace api_key and list_id with your own details
-  $api_key = variable_get(CM_API_KEY, '');
-  $client_id = variable_get(CM_CLIENT_ID, '');
-  $lists = campaignmonitor_get_available_lists();
 
-  $options = array();
-  $default_values = array();
+  // Only display form if selected in the administration page.
+  $display_on = variable_get(CM_DISPLAY_ON, array());
 
-  foreach ($lists as $list_id => $list) {
-    if ($list != '0') {
-      // If the current user is subscribed to the list check the checkbox.
-      $default = FALSE;
-      if (_campaignmonitor_is_subscribed($api_key, $list_id, $user->mail, TRUE)) {
-        $default = TRUE;
-        $default_values[] = $list_id;
+  if ($display_on['userpage']) {
+    // Replace api_key and list_id with your own details
+    $api_key = variable_get(CM_API_KEY, '');
+    $client_id = variable_get(CM_CLIENT_ID, '');
+    $lists = campaignmonitor_get_available_lists();
+
+    $options = array();
+    $default_values = array();
+
+    foreach ($lists as $list_id => $list) {
+      if ($list && $list->onuserpage) {
+        // If the current user is subscribed to the list check the checkbox.
+        $default = FALSE;
+        if (_campaignmonitor_is_subscribed($api_key, $list_id, $user->mail, TRUE)) {
+          $default = TRUE;
+          $default_values[] = $list_id;
+        }
+        $options[$list_id] = $list->name;
+
+        $form['is_subscribed_' . $list_id] = array(
+            '#type' => 'hidden',
+            '#default_value' => $default,
+        );
       }
-      $options[$list_id] = $list->name;
+    }
 
-      $form['is_subscribed_' . $list_id] = array(
-          '#type' => 'hidden',
-          '#default_value' => $default,
+    if (!empty ($options)) {
+      $form['subscribe_newsletter'] = array(
+          '#type' => 'checkboxes',
+          '#title' => t(variable_get(CM_USERPAGE_DISPLAY_TEXT, CM_USERPAGE_DISPLAY_TEXT_DEFAULT)),
+          '#options' => $options,
+          '#default_value' => $default_values,
+      );
+
+      $form['submit'] = array('#type' => 'submit', '#value' => t('Save'));
+    }
+    else {
+      $form['subscribe_newsletter'] = array(
+        '#value' => t('There are no list avaliable.'),
       );
     }
   }
+  else {
+    $form['subscribe_newsletter'] = array(
+      '#value' => t('You are not allow to subscrib newsletters.'),
+    );
+  }
 
-  $form['subscribe_newsletter'] = array(
-      '#type' => 'checkboxes',
-      '#title' => t(variable_get(CM_USERPAGE_DISPLAY_TEXT, CM_USERPAGE_DISPLAY_TEXT_DEFAULT)),
-      '#options' => $options,
-      '#default_value' => $default_values,
-  );
-
-  $form['submit'] = array('#type' => 'submit', '#value' => t('Save'));
   return $form;
 }
 

@@ -57,7 +57,8 @@ function campaignmonitor_admin_settings_form() {
       '#default_value' => variable_get(CM_DISPLAY_ON, array()),
       '#options' => array(
         'contact' => t('Contact Page'),
-        'registration' => t('Registration Page')
+        'registration' => t('Registration Page'),
+        'userpage' => t('User Page'),
       ),
       '#description' => t('Choose which forms you want to display the Join Newsletter checkbox(es).')
     );
@@ -175,6 +176,12 @@ function campaignmonitor_admin_settings_form() {
         '#default_value' => $saved_list->onregopage,
       );
 
+      $form[CM_LISTS]['campaignmonitor_list_' . $list_id]['onuserpage'] = array(
+        '#type' => 'checkbox',
+        '#title' => t('Include on User page'),
+        '#description' => t('If displaying on the user page is enabled in general options, checking this includes this list in the display.'),
+        '#default_value' => $saved_list->onuseropage,
+      );
 //      $form[CM_LISTS]['campaignmonitor_list_'. $list_id]['displayname'] = array(
 //        '#type' => 'checkbox',
 //        '#title' => t('Display Name field'),
@@ -253,6 +260,7 @@ function campaignmonitor_admin_settings_form_validate($form, &$form_state) {
     $list->name = $form_list['info']['name'];
     $list->oncontactpage = $form_list['oncontactpage'];
     $list->onregopage = $form_list['onregopage'];
+    $list->onuserpage = $form_list['onuserpage'];
     //$list->displayname = $form_list['displayname'];
     $list->namekey = $form_list['namekey'];
 

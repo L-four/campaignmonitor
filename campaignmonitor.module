@@ -93,7 +93,8 @@ function campaignmonitor_menu() {
  */
 function campaignmonitor_user_page_access($account) {
   global $user;
-  if ($user->uid && $user->uid == $account->uid && user_access('join newsletter')) {
+  $display_on = variable_get(CM_DISPLAY_ON, array());
+  if ($display_on['userpage'] && $user->uid && $user->uid == $account->uid && user_access('join newsletter')) {
     return TRUE;
   }
   return FALSE;
