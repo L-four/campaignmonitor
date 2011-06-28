@@ -180,7 +180,7 @@ function campaignmonitor_admin_settings_form() {
         '#type' => 'checkbox',
         '#title' => t('Include on User page'),
         '#description' => t('If displaying on the user page is enabled in general options, checking this includes this list in the display.'),
-        '#default_value' => $saved_list->onuseropage,
+        '#default_value' => $saved_list->onuserpage,
       );
 //      $form[CM_LISTS]['campaignmonitor_list_'. $list_id]['displayname'] = array(
 //        '#type' => 'checkbox',
