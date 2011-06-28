@@ -78,13 +78,25 @@ function campaignmonitor_menu() {
     'title' => 'My Newsletters',
     'page callback' => 'drupal_get_form',
     'page arguments' => array('campaignmonitor_user_page_form'),
-    'access arguments' => array('join newsletter'),
+    'access callback' => 'campaignmonitor_user_page_access',
+    'access arguments' => array(1),
     'type' => MENU_LOCAL_TASK,
     'file' => 'includes/campaignmonitor.user_page.inc',
     'weight' => 5,
   );
 
   return $items;
+}
+
+/**
+ * Access callback for the user newsletters page.
+ */
+function campaignmonitor_user_page_access($account) {
+  global $user;
+  if ($user->uid && $user->uid == $account->uid && user_access('join newsletter')) {
+    return TRUE;
+  }
+  return FALSE;
 }
 
 /**
@@ -245,8 +257,7 @@ function campaignmonitor_subscribe_form(&$form_state, $list_id) {
 
   $custom_fields = _campaignmonitor_get_custom_fields(variable_get(CM_API_KEY, ''), $list_id);
   foreach ($custom_fields as $field) {
-    $key = str_replace('[', '', $field['Key']);
-    $key = str_replace(']', '', $key);
+    $key = str_replace(array('[', ']'), '', $field['Key']);
 
     $saved_cfs = $list->customfields;
     $display_cf = FALSE;
@@ -362,8 +373,7 @@ function campaignmonitor_subscribe_form_submit($form, &$form_state) {
     // this is the case where they now want to be subscribed, and weren't before
     $custom_fields = _campaignmonitor_get_custom_fields($api_key, $list_id);
     foreach ($custom_fields as $field) {
-      $key = str_replace('[', '', $field['Key']);
-      $key = str_replace(']', '', $key);
+      $key = str_replace(array('[', ']'), '', $field['Key']);
 
       $saved_cfs = $list->customfields;
       $display_cf = FALSE;
