@@ -39,7 +39,7 @@ function campaignmonitor_user_page_form() {
 
   $form['subscribe_newsletter'] = array(
       '#type' => 'checkboxes',
-      '#title' => variable_get(CM_USERPAGE_DISPLAY_TEXT, CM_USERPAGE_DISPLAY_TEXT_DEFAULT),
+      '#title' => t(variable_get(CM_USERPAGE_DISPLAY_TEXT, CM_USERPAGE_DISPLAY_TEXT_DEFAULT)),
       '#options' => $options,
       '#default_value' => $default_values,
   );

@@ -152,11 +152,11 @@ function campaignmonitor_admin_settings_form() {
       );
 
       // Build string with list details.
-      $details = t('<p>Confirm Opt in: %optin<br/>Unsubscribe Page: %unsub<br/>Confirmation Success Page: %conf</p>',
+      $details = '<p>' . t('Confirm Opt in: %optin<br/>Unsubscribe Page: %unsub<br/>Confirmation Success Page: %conf',
                     array('%optin' => $list_detail['ConfirmOptIn'],
                           '%unsub' => $list_detail['UnsubscribePage'],
                           '%conf'  => $list_detail['ConfirmationSuccessPage'])
-                  );
+                  ) . '</p>';
       $form[CM_LISTS]['campaignmonitor_list_' . $list_id]['info']['list_detail'] = array(
         '#value' => $details,
       );
