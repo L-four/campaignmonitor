@@ -43,11 +43,20 @@ function campaignmonitor_help($path, $arg) {
 /**
  * Implementation of hook_perm().
  */
-function campaignmonitor_perm() {
+function campaignmonitor_permission() {
   return array(
-    'administer campaignmonitor',
-    'access archive',
-    'join newsletter'
+    'administer campaignmonitor' => array(
+      'title' => t('Administer Campaign Monitor'),
+      'description' => t('Administer Campaign Monitor settings.'),
+    ),
+    'access archive' => array(
+      'title' => t('Access newsletter archive'),
+      'description' => t('Access newsletter achives'),
+    ),
+    'join newsletter' => array(
+      'title' => t('Join newsletters'),
+      'description' => t('Join newsletters'),
+    ),
   );
 }
 
