@@ -553,6 +553,16 @@ function template_preprocess_campaignmonitor_block_content(&$variables) {
 
 /* SOAP CALLS AND HELPERS */
 
+/**
+ * Check if the e-mail address is registrated as subscribed at campaign monitor
+ * for the list ID parameter.
+ *
+ * @param string $api_key
+ * @param int $list_id
+ * @param string $email
+ * @param boolean $show_errors
+ * @return boolean, TRUE if e-mail is subscribed and FALSE if not.
+ */
 function _campaignmonitor_is_subscribed($api_key, $list_id, $email, $show_errors = FALSE) {
   $retval = FALSE;
   $cm = new CampaignMonitor($api_key, $client_id, $campaign_id, $list_id);
@@ -576,6 +586,17 @@ function _campaignmonitor_is_subscribed($api_key, $list_id, $email, $show_errors
   return $retval;
 }
 
+/**
+ * Subscribe a user to a newsletter list, by e-mail, name and custom fields.
+ *
+ * @param string $api_key
+ * @param int $list_id
+ * @param string $name
+ * @param string $email
+ * @param array $custom_fields
+ * @param boolean $show_errors
+ * @return boolean, TRUE if subscription succeeded else FALSE.
+ *  */
 function _campaignmonitor_add_subscriber($api_key, $list_id, $name, $email, $custom_fields = array(), $show_errors = FALSE) {
   $cm = new CampaignMonitor($api_key, $client_id, $campaign_id, $list_id);
 
@@ -589,13 +610,24 @@ function _campaignmonitor_add_subscriber($api_key, $list_id, $name, $email, $cus
   if ($result['anyType']['Code'] != 0) {
     watchdog('campaignmonitor', 'Code - %code, Message - %message', array('%code' => $result['anyType']['Code'], '%message' => $result['anyType']['Message']));
     drupal_set_message(CM_SUBSCRIPTION_ERROR, 'error', FALSE);
+    return FALSE;
   }
   else {
     $details = _campaignmonitor_get_list_detail($api_key, $list_id);
     drupal_set_message(str_replace('%list', $details['Title'], CM_SUBSCRIPTION_SUCCESS), 'status');
+    return TRUE;
   }
 }
 
+/**
+ * Remove user form a newsletter list identified by e-mail and list ID.
+ *
+ * @param string $api_key
+ * @param string $list_id
+ * @param string $email
+ * @param boolean $show_errors
+ * @return boolean, TRUE if subscription removel succeeded else FALSE.
+ */
 function _campaignmonitor_remove_subscriber($api_key, $list_id, $email, $show_errors = FALSE) {
   $cm = new CampaignMonitor($api_key, $client_id, $campaign_id, $list_id);
 
@@ -603,13 +635,25 @@ function _campaignmonitor_remove_subscriber($api_key, $list_id, $email, $show_er
   if ($result['Result']['Code'] == 0) {
     $details = _campaignmonitor_get_list_detail($api_key, $list_id);
     drupal_set_message(str_replace('%list', $details['Title'], CM_UNSUBSCRIPTION_SUCCESS), 'status');
+    return TRUE;
   }
   else {
     watchdog('campaignmonitor', 'Code - %code, Message - %message', array('%code' => $result['anyType']['Code'], '%message' => $result['anyType']['Message']));
     drupal_set_message(CM_UNSUBSCRIPTION_ERROR, 'error', FALSE);
+    return FALSE;
   }
 }
 
+/**
+ * Get information form campaign mointor about a subscribed user base on list ID
+ * and e-mail.
+ *
+ * @param string $api_key
+ * @param string $list_id
+ * @param string $email
+ * @param boolean $show_errors
+ * @return mixed an array with information will be return.
+ */
 function _campaignmonitor_get_subscriber($api_key, $list_id, $email, $show_errors = FALSE) {
   $retval = array("name" => '', "email" => $email);
   $cm = new CampaignMonitor($api_key, $client_id, $campaign_id, $list_id);
@@ -655,6 +699,13 @@ function _campaignmonitor_get_subscriber($api_key, $list_id, $email, $show_error
   return $retval;
 }
 
+/**
+ * Get all lists from campaign monitor identified by client ID and API key.
+ *
+ * @param string $api_key
+ * @param string $client_id
+ * @return array off lists.
+ */
 function _campaignmonitor_get_lists($api_key, $client_id) {
   $retval = array();
   $cm = new CampaignMonitor($api_key, $client_id, $campaign_id, $list_id);
@@ -684,6 +735,15 @@ function _campaignmonitor_get_lists($api_key, $client_id) {
   return $retval;
 }
 
+/**
+ * Get detailed information about a campaign mointor list.
+ *
+ * @staticvar array $lists
+ * @param string $api_key
+ * @param string $list_id
+ * @param boolean $reset
+ * @return array with detailed list information.
+ */
 function _campaignmonitor_get_list_detail($api_key, $list_id, $reset = FALSE) {
   static $lists;
   if (!isset($lists) || !isset($lists[$list_id]) || $reset) {
@@ -708,6 +768,13 @@ function _campaignmonitor_get_list_detail($api_key, $list_id, $reset = FALSE) {
   return $lists[$list_id];
 }
 
+/**
+ * Get custom fields for a list.
+ *
+ * @param string $api_key
+ * @param string $list_id
+ * @return array custom field description
+ */
 function _campaignmonitor_get_custom_fields($api_key, $list_id) {
   $retval = array();
   $cm = new CampaignMonitor($api_key, $client_id, $campaign_id, $list_id);
