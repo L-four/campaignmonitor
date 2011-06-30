@@ -238,22 +238,24 @@ function campaignmonitor_subscribe_form(&$form_state, $list_id) {
     }
   }
 
-  $form['name'] = array(
+  if ($list->displayname) {
+    $form['name'] = array(
       '#type' => 'textfield',
       '#title' => t('Name'),
       '#size' => 20,
       '#maxlength' => 50,
       '#required' => TRUE,
       '#default_value' => $name,
-  );
+    );
+  }
 
   $form['email'] = array(
-      '#type' => 'textfield',
-      '#title' => t('Email'),
-      '#size' => 20,
-      '#maxlength' => 100,
-      '#required' => TRUE,
-      '#default_value' => $email,
+    '#type' => 'textfield',
+    '#title' => t('Email'),
+    '#size' => 20,
+    '#maxlength' => 100,
+    '#required' => TRUE,
+    '#default_value' => $email,
   );
 
   $custom_fields = _campaignmonitor_get_custom_fields(variable_get(CM_API_KEY, ''), $list_id);
@@ -273,11 +275,11 @@ function campaignmonitor_subscribe_form(&$form_state, $list_id) {
     if ($display_cf) {
       if ($field['DataType'] == 'Text') {
         $form[$key] = array(
-            '#type' => 'textfield',
-            '#title' => t($field['FieldName']),
-            '#size' => 20,
-            '#maxlength' => 100,
-            '#default_value' => $subscriber['CustomFields'][$field['FieldName']],
+          '#type' => 'textfield',
+          '#title' => t($field['FieldName']),
+          '#size' => 20,
+          '#maxlength' => 100,
+          '#default_value' => $subscriber['CustomFields'][$field['FieldName']],
         );
       }
       elseif ($field['DataType'] == 'MultiSelectOne') {
@@ -295,10 +297,10 @@ function campaignmonitor_subscribe_form(&$form_state, $list_id) {
         }
 
         $form[$key] = array(
-            '#type' => 'select',
-            '#title' => t($field['FieldName']),
-            '#options' => $options,
-            '#default_value' => $defaultvalue,
+          '#type' => 'select',
+          '#title' => t($field['FieldName']),
+          '#options' => $options,
+          '#default_value' => $defaultvalue,
         );
       }
       elseif ($field['DataType'] == 'MultiSelectMany') {
@@ -322,19 +324,19 @@ function campaignmonitor_subscribe_form(&$form_state, $list_id) {
           }
         }
         $form[$key] = array(
-            '#type' => 'checkboxes',
-            '#title' => t($field['FieldName']),
-            '#options' => $options,
-            '#default_value' => $defaultvalues,
+          '#type' => 'checkboxes',
+          '#title' => t($field['FieldName']),
+          '#options' => $options,
+          '#default_value' => $defaultvalues,
         );
       }
       elseif ($field['DataType'] == 'Number') {
         $form[$key] = array(
-            '#type' => 'textfield',
-            '#title' => t($field['FieldName']),
-            '#size' => 20,
-            '#maxlength' => 100,
-            '#default_value' => $subscriber['CustomFields'][$field['FieldName']],
+          '#type' => 'textfield',
+          '#title' => t($field['FieldName']),
+          '#size' => 20,
+          '#maxlength' => 100,
+          '#default_value' => $subscriber['CustomFields'][$field['FieldName']],
         );
       }
     }
@@ -347,8 +349,8 @@ function campaignmonitor_subscribe_form(&$form_state, $list_id) {
     ); */
 
   $form['list_id'] = array(
-      '#type' => 'hidden',
-      '#value' => $list_id,
+    '#type' => 'hidden',
+    '#value' => $list_id,
   );
 
   $form['submit'] = array('#type' => 'submit', '#value' => t('Submit'));

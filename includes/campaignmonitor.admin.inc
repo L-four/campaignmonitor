@@ -182,12 +182,13 @@ function campaignmonitor_admin_settings_form() {
         '#description' => t('If displaying on the user page is enabled in general options, checking this includes this list in the display.'),
         '#default_value' => $saved_list->onuserpage,
       );
-//      $form[CM_LISTS]['campaignmonitor_list_'. $list_id]['displayname'] = array(
-//        '#type' => 'checkbox',
-//        '#title' => t('Display Name field'),
-//        '#description' => t('When subscribing, should the name field be displayed.'),
-//        '#default_value' => $saved_list->displayname,
-//      );
+
+      $form[CM_LISTS]['campaignmonitor_list_'. $list_id]['displayname'] = array(
+        '#type' => 'checkbox',
+        '#title' => t('Display Name field'),
+        '#description' => t('When subscribing, should the name field be displayed.'),
+        '#default_value' => $saved_list->displayname,
+      );
 
       $form[CM_LISTS]['campaignmonitor_list_' . $list_id]['namekey'] = array(
         '#type' => 'select',
@@ -261,7 +262,7 @@ function campaignmonitor_admin_settings_form_validate($form, &$form_state) {
     $list->oncontactpage = $form_list['oncontactpage'];
     $list->onregopage = $form_list['onregopage'];
     $list->onuserpage = $form_list['onuserpage'];
-    //$list->displayname = $form_list['displayname'];
+    $list->displayname = $form_list['displayname'];
     $list->namekey = $form_list['namekey'];
 
 
