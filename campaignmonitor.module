@@ -706,33 +706,47 @@ function _campaignmonitor_get_subscriber($api_key, $list_id, $email, $show_error
  * @param string $client_id
  * @return array off lists.
  */
-function _campaignmonitor_get_lists($api_key, $client_id) {
-  $retval = array();
-  $cm = new CampaignMonitor($api_key, $client_id, $campaign_id, $list_id);
-
-  $result = $cm->clientGetLists();
-
-  if ($result['anyType']['Code'] != 0) {
-    watchdog('campaignmonitor', 'Get Lists: Code - %code, Message - %message', array('%code' => $result['anyType']['Code'], '%message' => $result['anyType']['Message']));
-    if ($show_errors) {
-      drupal_set_message(CM_ERROR, 'error', FALSE);
+function _campaignmonitor_get_lists($api_key, $client_id, $reset = FALSE) {
+  static $data;
+  if (!isset($data) || $reset) {
+    if (!$reset && ($cache = cache_get('campaignmonitor_lists')) && !empty($cache->data)) {
+      // Cache information found.
+      $data = $cache->data;
     }
-  }
-  else {
-    if (!empty($result['anyType']['List'])) {
-      $lists = $result['anyType']['List'];
-      // if there is only one list
-      if (!empty($lists['ListID'])) {
-        $retval[$lists['ListID']] = $lists['Name'];
-      }
-      else {
-        foreach ($lists as $list) {
-          $retval[$list['ListID']] = $list['Name'];
+    else {
+      $data = array();
+
+      // Get lists from campaign monitor.
+      $cm = new CampaignMonitor($api_key, $client_id, $campaign_id, $list_id);
+      $result = $cm->clientGetLists();
+
+      if ($result['anyType']['Code'] != 0) {
+        watchdog('campaignmonitor', 'Get Lists: Code - %code, Message - %message', array('%code' => $result['anyType']['Code'], '%message' => $result['anyType']['Message']));
+        if ($show_errors) {
+          drupal_set_message(CM_ERROR, 'error', FALSE);
         }
       }
+      else {
+        if (!empty($result['anyType']['List'])) {
+          $lists = $result['anyType']['List'];
+          // If there is only one list.
+          if (!empty($lists['ListID'])) {
+            $data[$lists['ListID']] = $lists['Name'];
+          }
+          else {
+            foreach ($lists as $list) {
+              $data[$list['ListID']] = $list['Name'];
+            }
+          }
+        }
+      }
+
+      // Save the lists in the cache.
+      cache_set('campaignmonitor_lists', $data);
     }
   }
-  return $retval;
+
+  return $data;
 }
 
 /**
@@ -745,27 +759,41 @@ function _campaignmonitor_get_lists($api_key, $client_id) {
  * @return array with detailed list information.
  */
 function _campaignmonitor_get_list_detail($api_key, $list_id, $reset = FALSE) {
-  static $lists;
-  if (!isset($lists) || !isset($lists[$list_id]) || $reset) {
-    $retval = array();
-    $cm = new CampaignMonitor($api_key, $client_id, $campaign_id, $list_id);
+  $get_data = FALSE;
 
+  static $data;
+  if (!isset($data) || $reset) {
+    if (!$reset && ($cache = cache_get('campaignmonitor_list_detail')) && !empty($cache->data)) {
+      $data = $cache->data;
+      if (!isset($data[$list_id])) {
+        // Cache found, but no information about current list.
+        $get_data = TRUE;
+      }
+    }
+    else {
+      // No cache found.
+      $data = array();
+      $get_data = TRUE;
+    }
+  }
+
+  // Data was not found in the cache, so aske campaign monitor for it.
+  if ($get_data) {
+    $cm = new CampaignMonitor($api_key, $client_id, $campaign_id, $list_id);
     $result = $cm->listGetDetail($list_id);
 
     if ($result['anyType']['Code'] != 0) {
       watchdog('campaignmonitor', 'Get List Detail: Code - %code, Message - %message', array('%code' => $result['anyType']['Code'], '%message' => $result['anyType']['Message']));
-      if ($show_errors) {
-        drupal_set_message(CM_ERROR, 'error', FALSE);
-      }
+      drupal_set_message(CM_ERROR, 'error', FALSE);
     }
     else {
-      $retval = $result['anyType'];
+      // Save list details in the cache.
+      $data[$list_id] = $result['anyType'];
+      cache_set('campaignmonitor_list_detail', $data);
     }
-
-    $lists[$list_id] = $retval;
   }
 
-  return $lists[$list_id];
+  return $data[$list_id];
 }
 
 /**
@@ -776,29 +804,48 @@ function _campaignmonitor_get_list_detail($api_key, $list_id, $reset = FALSE) {
  * @return array custom field description
  */
 function _campaignmonitor_get_custom_fields($api_key, $list_id) {
-  $retval = array();
-  $cm = new CampaignMonitor($api_key, $client_id, $campaign_id, $list_id);
+  $get_data = FALSE;
 
-  $result = $cm->listGetCustomFields($list_id);
+  static $data;
+  if (!isset($data) || $reset) {
+    if (!$reset && ($cache = cache_get('campaignmonitor_custom_fields')) && !empty($cache->data)) {
+      $data = $cache->data;
+      if (!isset($data[$list_id])) {
+        // Cache found, but no information about current list.
+        $get_data = TRUE;
+      }
+    }
+    else {
+      // No cache found.
+      $data = array();
+      $get_data = TRUE;
+    }
+  }
 
-  if ($result['anyType']['Code'] != 0) {
-    watchdog('campaignmonitor', 'Get Custom Fields: Code - %code, Message - %message', array('%code' => $result['anyType']['Code'], '%message' => $result['anyType']['Message']));
-    if ($show_errors) {
+  if ($get_data) {
+    $retval = array();
+    $cm = new CampaignMonitor($api_key, $client_id, $campaign_id, $list_id);
+    $result = $cm->listGetCustomFields($list_id);
+
+    if ($result['anyType']['Code'] != 0) {
+      watchdog('campaignmonitor', 'Get Custom Fields: Code - %code, Message - %message', array('%code' => $result['anyType']['Code'], '%message' => $result['anyType']['Message']));
       drupal_set_message(CM_ERROR, 'error', FALSE);
     }
-  }
-  else {
-    if (!empty($result['anyType']['ListCustomField'])) {
-
-      // if there is only one list
-      if (!empty($result['anyType']['ListCustomField']['FieldName'])) {
-        $retval = array();
-        $retval[] = $result['anyType']['ListCustomField'];
+    else {
+      if (!empty($result['anyType']['ListCustomField'])) {
+        // If there is only one list.
+        if (!empty($result['anyType']['ListCustomField']['FieldName'])) {
+          $retval[] = $result['anyType']['ListCustomField'];
+        }
+        else {
+          $retval = $result['anyType']['ListCustomField'];
+        }
       }
-      else {
-        $retval = $result['anyType']['ListCustomField'];
-      }
+      // Save list details in the cache.
+      $data[$list_id] = $retval;
+      cache_set('campaignmonitor_custom_fields', $data);
     }
   }
-  return $retval;
+
+  return $data[$list_id];
 }

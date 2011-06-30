@@ -235,6 +235,18 @@ function campaignmonitor_admin_settings_form() {
     }
   }
 
+  $form['clear_cache'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Clear cached data'),
+    '#description' => t('This module uses cache to store information downloaded from campaign monitor. The information cache is lists datails and custom fields. To re-download the information, clear the cache.'),
+  );
+
+  $form['clear_cache']['clear'] = array(
+    '#type' => 'submit',
+    '#value' => t('Clear cached data'),
+    '#submit' => array('campaignmonitor_clear_cache_submit'),
+  );
+
   // Add extra form funtion callbacks.
   $form['#validate'][] = 'campaignmonitor_admin_settings_form_validate';
   $form['#submit'][] = 'campaignmonitor_admin_settings_form_submit';
@@ -280,7 +292,7 @@ function campaignmonitor_admin_settings_form_validate($form, &$form_state) {
     $lists[$form_list['info']['list_id']] = $list;
   }
 
-  // remove lists from the form_state
+  // Remove lists from the form_state.
   unset($form_state['values'][CM_LISTS]);
   variable_set(CM_LISTS, $lists);
 }
@@ -288,10 +300,17 @@ function campaignmonitor_admin_settings_form_validate($form, &$form_state) {
 /**
  * Administration form submit function blocks are rebuild as we've possibly
  * changed blocks.
- *
- * @param array $form
- * @param array $form_state
  */
 function campaignmonitor_settings_form_submit($form, &$form_state) {
   _block_rehash();
+}
+
+/**
+ * Clear the caches used by campaign monitor.
+ */
+function campaignmonitor_clear_cache_submit($form, &$form_state) {
+  cache_clear_all('campaignmonitor_custom_fields', 'cache');
+  cache_clear_all('campaignmonitor_list_detail', 'cache');
+  cache_clear_all('campaignmonitor_lists', 'cache');
+  drupal_set_message(t('Campaign Monitor caches cleared.'));
 }

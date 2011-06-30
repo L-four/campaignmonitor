@@ -21,7 +21,7 @@ This module was developed by T-Rex Art: http://www.trexart.com.au
 ------------
 Installation
 ------------
-- At this time the module uses the built in libraries of PHP5 for he SOAP calls
+- At this time the module uses the built in libraries of PHP5 for the SOAP calls
 so it is not available for use with PHP4. If you find there are errors, make
 sure that your PHP installation has SOAP enabled.
 
@@ -61,5 +61,4 @@ Future plans
 
 I hope to integrate more of the API into this module in the future.
 
-- Custom fields retrieved automatically.
 - I will gladly take any suggestions.
