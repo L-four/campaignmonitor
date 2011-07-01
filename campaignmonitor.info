@@ -2,6 +2,7 @@ name = Campaign Monitor
 description = "This module uses the Campaign Monitor API to add newsletter checkboxes to each form you like, plus allow people to subscribe, unsubscribe and view past campaigns."
 core = 7.x
 php = 5.0
+configure = admin/config/services/campaignmonitor
 package = Other
 
 files[] = campaignmonitor.module

@@ -66,7 +66,7 @@ function campaignmonitor_permission() {
 function campaignmonitor_menu() {
   $items = array();
 
-  $items['admin/settings/campaignmonitor'] = array(
+  $items['admin/config/services/campaignmonitor'] = array(
     'title' => 'Campaign Monitor',
     'description' => 'Setup Campaign Monitor values.',
     'page callback' => 'drupal_get_form',
@@ -76,7 +76,7 @@ function campaignmonitor_menu() {
     'file' => 'includes/campaignmonitor.admin.inc',
   );
 
-  $items['newsletter_archive'] = array(
+  $items['campaignmonitor/archive'] = array(
     'title' => 'Newsletter Archive',
     'page callback' => 'campaignmonitor_newsletter_archive',
     'access arguments' => array('access archive'),
@@ -572,7 +572,7 @@ function template_preprocess_campaignmonitor_block_content(&$variables) {
  */
 function _campaignmonitor_is_subscribed($api_key, $list_id, $email, $show_errors = FALSE) {
   $retval = FALSE;
-  $cm = new CampaignMonitor($api_key, $client_id, $campaign_id, $list_id);
+  $cm = new CampaignMonitor($api_key, $client_id, NULL, $list_id);
 
   $result = $cm->subscribersGetIsSubscribed($email, $list_id);
 
@@ -605,7 +605,7 @@ function _campaignmonitor_is_subscribed($api_key, $list_id, $email, $show_errors
  * @return boolean, TRUE if subscription succeeded else FALSE.
  *  */
 function _campaignmonitor_add_subscriber($api_key, $list_id, $name, $email, $custom_fields = array(), $show_errors = FALSE) {
-  $cm = new CampaignMonitor($api_key, $client_id, $campaign_id, $list_id);
+  $cm = new CampaignMonitor($api_key, NULL, NULL, $list_id);
 
   if (count($custom_fields) > 0) {
     $result = $cm->subscriberAddAndResubscribeWithCustomFields($email, $name, $custom_fields);
@@ -636,7 +636,7 @@ function _campaignmonitor_add_subscriber($api_key, $list_id, $name, $email, $cus
  * @return boolean, TRUE if subscription removel succeeded else FALSE.
  */
 function _campaignmonitor_remove_subscriber($api_key, $list_id, $email, $show_errors = FALSE) {
-  $cm = new CampaignMonitor($api_key, $client_id, $campaign_id, $list_id);
+  $cm = new CampaignMonitor($api_key, NULL, NULL, $list_id);
 
   $result = $cm->subscriberUnsubscribe($email);
   if ($result['Result']['Code'] == 0) {
@@ -663,7 +663,7 @@ function _campaignmonitor_remove_subscriber($api_key, $list_id, $email, $show_er
  */
 function _campaignmonitor_get_subscriber($api_key, $list_id, $email, $show_errors = FALSE) {
   $retval = array("name" => '', "email" => $email);
-  $cm = new CampaignMonitor($api_key, $client_id, $campaign_id, $list_id);
+  $cm = new CampaignMonitor($api_key, NULL, NULL, $list_id);
 
   $result = $cm->subscriberGetSingleSubscriber($list_id, $email);
 
@@ -724,10 +724,10 @@ function _campaignmonitor_get_lists($api_key, $client_id, $reset = FALSE) {
       $data = array();
 
       // Get lists from campaign monitor.
-      $cm = new CampaignMonitor($api_key, $client_id, $campaign_id, $list_id);
+      $cm = new CampaignMonitor($api_key, $client_id);
       $result = $cm->clientGetLists();
 
-      if ($result['anyType']['Code'] != 0) {
+      if (isset($result['anyType']['Code']) && $result['anyType']['Code']) {
         watchdog('campaignmonitor', 'Get Lists: Code - %code, Message - %message', array('%code' => $result['anyType']['Code'], '%message' => $result['anyType']['Message']));
         if ($show_errors) {
           drupal_set_message(CM_ERROR, 'error', FALSE);
@@ -769,7 +769,7 @@ function _campaignmonitor_get_list_detail($api_key, $list_id, $reset = FALSE) {
   $get_data = FALSE;
 
   static $data;
-  if (!isset($data) || $reset) {
+  if (!isset($data) || !isset($data[$list_id]) || $reset) {
     if (!$reset && ($cache = cache_get('campaignmonitor_list_detail')) && !empty($cache->data)) {
       $data = $cache->data;
       if (!isset($data[$list_id])) {
@@ -786,10 +786,10 @@ function _campaignmonitor_get_list_detail($api_key, $list_id, $reset = FALSE) {
 
   // Data was not found in the cache, so aske campaign monitor for it.
   if ($get_data) {
-    $cm = new CampaignMonitor($api_key, $client_id, $campaign_id, $list_id);
+    $cm = new CampaignMonitor($api_key, NULL, NULL, $list_id);
     $result = $cm->listGetDetail($list_id);
 
-    if ($result['anyType']['Code'] != 0) {
+    if (isset($result['anyType']['Code']) && $result['anyType']['Code']) {
       watchdog('campaignmonitor', 'Get List Detail: Code - %code, Message - %message', array('%code' => $result['anyType']['Code'], '%message' => $result['anyType']['Message']));
       drupal_set_message(CM_ERROR, 'error', FALSE);
     }
@@ -810,11 +810,11 @@ function _campaignmonitor_get_list_detail($api_key, $list_id, $reset = FALSE) {
  * @param string $list_id
  * @return array custom field description
  */
-function _campaignmonitor_get_custom_fields($api_key, $list_id) {
+function _campaignmonitor_get_custom_fields($api_key, $list_id, $reset = FALSE) {
   $get_data = FALSE;
 
   static $data;
-  if (!isset($data) || $reset) {
+  if (!isset($data) || !isset($data[$list_id]) || $reset) {
     if (!$reset && ($cache = cache_get('campaignmonitor_custom_fields')) && !empty($cache->data)) {
       $data = $cache->data;
       if (!isset($data[$list_id])) {
@@ -831,10 +831,10 @@ function _campaignmonitor_get_custom_fields($api_key, $list_id) {
 
   if ($get_data) {
     $retval = array();
-    $cm = new CampaignMonitor($api_key, $client_id, $campaign_id, $list_id);
+    $cm = new CampaignMonitor($api_key, NULL, NULL, $list_id);
     $result = $cm->listGetCustomFields($list_id);
 
-    if ($result['anyType']['Code'] != 0) {
+    if (isset($result['anyType']['Code']) && $result['anyType']['Code']) {
       watchdog('campaignmonitor', 'Get Custom Fields: Code - %code, Message - %message', array('%code' => $result['anyType']['Code'], '%message' => $result['anyType']['Message']));
       drupal_set_message(CM_ERROR, 'error', FALSE);
     }

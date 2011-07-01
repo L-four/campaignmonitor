@@ -115,7 +115,7 @@ function campaignmonitor_admin_settings_form() {
     if (!count($available_lists)) {
       unset($form[CM_LISTS]['#description']);
       $form[CM_LISTS]['empty'] = array(
-        '#value' => t('You Campaign Monitor account do not have any lists avaliable.'),
+        '#markup' => t('You Campaign Monitor account do not have any lists avaliable.'),
       );
     }
 
@@ -154,12 +154,12 @@ function campaignmonitor_admin_settings_form() {
 
       // Build string with list details.
       $details = '<p>' . t('Confirm Opt in: %optin<br/>Unsubscribe Page: %unsub<br/>Confirmation Success Page: %conf',
-                    array('%optin' => $list_detail['ConfirmOptIn'],
-                          '%unsub' => $list_detail['UnsubscribePage'],
-                          '%conf'  => $list_detail['ConfirmationSuccessPage'])
+                    array('%optin' => isset($list_detail['ConfirmOptIn']) ? $list_detail['ConfirmOptIn'] : '',
+                          '%unsub' => isset($list_detail['UnsubscribePage']) ? $list_detail['UnsubscribePage'] : '',
+                          '%conf'  => isset($list_detail['ConfirmationSuccessPage']) ? $list_detail['ConfirmationSuccessPage'] : '')
                   ) . '</p>';
       $form[CM_LISTS]['campaignmonitor_list_' . $list_id]['info']['list_detail'] = array(
-        '#value' => $details,
+        '#markup' => $details,
       );
 
       $form[CM_LISTS]['campaignmonitor_list_' . $list_id]['oncontactpage'] = array(
@@ -208,15 +208,14 @@ function campaignmonitor_admin_settings_form() {
         );
 
         // Get previous saved information about custom fields.
-        $saved_cfs = $saved_list->customfields;
+        $saved_cfs = property_exists($saved_list, 'customfields') ? $saved_list->customfields : array();
         foreach ($list_custom_fields as $cf) {
           $key = str_replace(array('[', ']'), '', $cf['Key']);
-          $saved_cf = $saved_cfs[$key];
-          if ($saved_cfs == NULL) {
+          if (!isset($saved_cfs[$key])) {
             $default_cfs = TRUE;
           }
           else {
-            $default_cfs = $saved_cf->display;
+            $default_cfs = $saved_cfs[$key]->display;
           }
 
           $form[CM_LISTS]['campaignmonitor_list_' . $list_id][CM_LISTS_CF]['custom_field_' . $key]['cf_id'] = array(
@@ -262,7 +261,7 @@ function campaignmonitor_admin_settings_form() {
  */
 function campaignmonitor_admin_settings_form_validate($form, &$form_state) {
   // No lists selected or first time here.
-  if (!is_array($form_state['values'][CM_LISTS])) {
+  if (!isset($form_state['values'][CM_LISTS])) {
     return;
   }
 
@@ -279,7 +278,7 @@ function campaignmonitor_admin_settings_form_validate($form, &$form_state) {
 
 
     $customfields = array();
-    if (is_array($form_list[CM_LISTS_CF])) {
+    if (isset($form_list[CM_LISTS_CF]) && is_array($form_list[CM_LISTS_CF])) {
       foreach ($form_list[CM_LISTS_CF] as $cf_list) {
         $customfield = new stdClass();
         $customfield->id = $cf_list['cf_id'];
@@ -301,7 +300,7 @@ function campaignmonitor_admin_settings_form_validate($form, &$form_state) {
  * Administration form submit function blocks are rebuild as we've possibly
  * changed blocks.
  */
-function campaignmonitor_settings_form_submit($form, &$form_state) {
+function campaignmonitor_admin_settings_form_submit($form, &$form_state) {
   _block_rehash();
 }
 
