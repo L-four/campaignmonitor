@@ -242,7 +242,6 @@ function campaignmonitor_subscribe_form($form, &$form_state, $list_id) {
   );
 
   $custom_fields = _campaignmonitor_get_custom_fields(variable_get(CM_API_KEY, ''), $list_id);
-  
   foreach ($custom_fields as $field) {
     $key = str_replace(array('[', ']'), '', $field['Key']);
 
@@ -544,11 +543,14 @@ function _campaignmonitor_is_subscribed($api_key, $list_id, $email, $show_errors
   $result = $cm->subscribersGetIsSubscribed($email, $list_id);
 
   if (empty($result) || (isset($result['anyType']['Code']) && !$result['anyType']['Code'])) {
-    watchdog('campaignmonitor', 'Code - %code, Message - %message', array('%code' => $result['anyType']['Code'], '%message' => $result['anyType']['Message']));
-    $retval = FALSE;
-    if ($show_errors) {
-      drupal_set_message(CM_ERROR, 'error', FALSE);
+    if (empty($result)) {
+      watchdog('campaignmonitor', 'There was a problem with the connection to Campaign Monitor.');
     }
+    else {
+      watchdog('campaignmonitor', 'Code - %code, Message - %message', array('%code' => $result['anyType']['Code'], '%message' => $result['anyType']['Message']));
+      $retval = FALSE;
+    }
+    drupal_set_message(CM_ERROR, 'error', FALSE);
   }
   elseif ($result['anyType'] == 'False') {
     $retval = FALSE;
@@ -582,7 +584,12 @@ function _campaignmonitor_add_subscriber($api_key, $list_id, $name, $email, $cus
   }
   
   if (empty($result) || (isset($result['anyType']['Code']) && !$result['anyType']['Code'])) {
-    watchdog('campaignmonitor', 'Code - %code, Message - %message', array('%code' => $result['anyType']['Code'], '%message' => $result['anyType']['Message']));
+    if (empty($result)) {
+      watchdog('campaignmonitor', 'There was a problem with the connection to Campaign Monitor.');
+    }
+    else {
+      watchdog('campaignmonitor', 'Code - %code, Message - %message', array('%code' => $result['anyType']['Code'], '%message' => $result['anyType']['Message']));
+    }
     drupal_set_message(CM_SUBSCRIPTION_ERROR, 'error', FALSE);
     return FALSE;
   }
@@ -612,9 +619,14 @@ function _campaignmonitor_remove_subscriber($api_key, $list_id, $email, $show_er
     return TRUE;
   }
   else {
-    watchdog('campaignmonitor', 'Code - %code, Message - %message', array('%code' => $result['anyType']['Code'], '%message' => $result['anyType']['Message']));
+    if (empty($result)) {
+      watchdog('campaignmonitor', 'There was a problem with the connection to Campaign Monitor.');
+    }
+    else {
+      watchdog('campaignmonitor', 'Code - %code, Message - %message', array('%code' => $result['anyType']['Code'], '%message' => $result['anyType']['Message']));
+      return FALSE;
+    }
     drupal_set_message(CM_UNSUBSCRIPTION_ERROR, 'error', FALSE);
-    return FALSE;
   }
 }
 
@@ -635,10 +647,13 @@ function _campaignmonitor_get_subscriber($api_key, $list_id, $email, $show_error
   $result = $cm->subscriberGetSingleSubscriber($list_id, $email);
 
   if (empty($result) || (isset($result['anyType']['Code']) && !$result['anyType']['Code'])) {
-    watchdog('campaignmonitor', 'Code - %code, Message - %message', array('%code' => $result['anyType']['Code'], '%message' => $result['anyType']['Message']));
-    if ($show_errors) {
-      drupal_set_message(CM_ERROR, 'error', FALSE);
+    if (empty($result)) {
+      watchdog('campaignmonitor', 'There was a problem with the connection to Campaign Monitor.');
     }
+    else {
+      watchdog('campaignmonitor', 'Code - %code, Message - %message', array('%code' => $result['anyType']['Code'], '%message' => $result['anyType']['Message']));
+    }
+    drupal_set_message(CM_ERROR, 'error', FALSE);
   }
   else {
     $retval['name'] = $result['anyType']['Name'];
@@ -695,10 +710,13 @@ function _campaignmonitor_get_lists($api_key, $client_id, $reset = FALSE) {
       $result = $cm->clientGetLists();
 
       if (empty($result) || (isset($result['anyType']['Code']) && !$result['anyType']['Code'])) {
-        watchdog('campaignmonitor', 'Get Lists: Code - %code, Message - %message', array('%code' => $result['anyType']['Code'], '%message' => $result['anyType']['Message']));
-        if ($show_errors) {
-          drupal_set_message(CM_ERROR, 'error', FALSE);
+        if (empty($result)) {
+          watchdog('campaignmonitor', 'There was a problem with the connection to Campaign Monitor.');
         }
+        else {
+          watchdog('campaignmonitor', 'Get Lists: Code - %code, Message - %message', array('%code' => $result['anyType']['Code'], '%message' => $result['anyType']['Message']));
+        }
+        drupal_set_message(CM_ERROR, 'error', FALSE);
       }
       else {
         if (!empty($result['anyType']['List'])) {
@@ -757,7 +775,12 @@ function _campaignmonitor_get_list_detail($api_key, $list_id, $reset = FALSE) {
     $result = $cm->listGetDetail($list_id);
 
     if (empty($result) || (isset($result['anyType']['Code']) && !$result['anyType']['Code'])) {
-      watchdog('campaignmonitor', 'Get List Detail: Code - %code, Message - %message', array('%code' => $result['anyType']['Code'], '%message' => $result['anyType']['Message']));
+      if (empty($result)) {
+        watchdog('campaignmonitor', 'There was a problem with the connection to Campaign Monitor.');
+      }
+      else {
+        watchdog('campaignmonitor', 'Get List Detail: Code - %code, Message - %message', array('%code' => $result['anyType']['Code'], '%message' => $result['anyType']['Message']));
+      }
       drupal_set_message(CM_ERROR, 'error', FALSE);
     }
     else {
@@ -801,8 +824,13 @@ function _campaignmonitor_get_custom_fields($api_key, $list_id, $reset = FALSE) 
     $cm = new CampaignMonitor($api_key, NULL, NULL, $list_id);
     $result = $cm->listGetCustomFields($list_id);
 
-    if (empty($result) || (isset($result['anyType']['Code']) && !$result['anyType']['Code'])) {
-      watchdog('campaignmonitor', 'Get Custom Fields: Code - %code, Message - %message', array('%code' => $result['anyType']['Code'], '%message' => $result['anyType']['Message']));
+    if ((empty($result) && !is_array($result)) || (isset($result['anyType']['Code']) && !$result['anyType']['Code'])) {
+      if (empty($result)) {
+        watchdog('campaignmonitor', 'There was a problem with the connection to Campaign Monitor.');
+      }
+      else {
+        watchdog('campaignmonitor', 'Get Custom Fields: Code - %code, Message - %message', array('%code' => $result['anyType']['Code'], '%message' => $result['anyType']['Message']));
+      }
       drupal_set_message(CM_ERROR, 'error', FALSE);
     }
     else {
