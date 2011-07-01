@@ -73,28 +73,27 @@ function campaignmonitor_user_page_form() {
 function campaignmonitor_user_page_form_submit($form, &$form_state) {
   global $user;
   
-  // Try to get name from default key values
-  $account = campaignmonitor_get_field_key_values($user->uid);
-  $name = $account[$list->namekey];
-
   $api_key = variable_get(CM_API_KEY, '');
   $client_id = variable_get(CM_CLIENT_ID, '');
 
   // Get the different lists avaliable and their state for the current user.
-  $lists = _campaignmonitor_get_lists($api_key, $client_id);
   $chosen_lists = campaignmonitor_get_available_lists();
   $subscribe = $form_state['values']['subscribe_newsletter'];
   
-  foreach ($lists as $list_id => $list) {
-    if ($list) {
-      // if subscribed, add if not already subscribed
-      if ($subscribe[$list_id] != NULL && !$form_state['values']['is_subscribed_' . $list_id]) {
+  foreach ($chosen_lists as $list_id => $list) {
+    if ($subscribe[$list_id]) {
+      // Try to get name from default key values.
+      $account = campaignmonitor_get_field_key_values($user->uid);
+      $name = isset($account[$list->namekey]) ? $account[$list->namekey] : '';
+
+      // If subscribed, add if not already subscribed.
+      if (isset($subscribe[$list_id]) && !$form_state['values']['is_subscribed_' . $list_id]) {
         _campaignmonitor_add_subscriber($api_key, $list_id, $name, $user->mail);
       }
-      // if not subscribed, and was subscribed before
-      elseif ($subscribe[$list_id] == NULL && $form_state['values']['is_subscribed_' . $list_id]) {
-        _campaignmonitor_remove_subscriber($api_key, $list_id, $user->mail);
-      }
+    }
+    // If not subscribed, and was subscribed before.
+    elseif (!$subscribe[$list_id] && $form_state['values']['is_subscribed_' . $list_id]) {
+      _campaignmonitor_remove_subscriber($api_key, $list_id, $user->mail);
     }
   }
 }
