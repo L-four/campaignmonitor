@@ -115,8 +115,8 @@ function campaignmonitor_user_page_access($account) {
  */
 function campaignmonitor_form_alter(&$form, &$form_state, $form_id) {
   $display_on = variable_get(CM_DISPLAY_ON, array());
-  if (('contact_mail_page' == $form_id && $display_on['contact'] != '0') ||
-      ('user_register' == $form_id && $display_on['registration'] != '0') && user_access('join newsletter')) {
+  if (('contact_site_form' == $form_id && $display_on['contact'] != '0') ||
+      ('user_register_form' == $form_id && $display_on['registration'] != '0') && user_access('join newsletter')) {
     $api_key = variable_get(CM_API_KEY, '');
     $client_id = variable_get(CM_CLIENT_ID, '');
     $lists = campaignmonitor_get_available_lists();
@@ -125,14 +125,21 @@ function campaignmonitor_form_alter(&$form, &$form_state, $form_id) {
 
     $options = array();
     foreach ($lists as $list_id => $list) {
-      if (($list->oncontactpage && 'contact_mail_page' == $form_id) || ($list->onregopage && 'user_register' == $form_id)) {
+      if (($list->oncontactpage && 'contact_site_form' == $form_id) || ($list->onregopage && 'user_register_form' == $form_id)) {
         $options[$list_id] = $list->name;
         $not_empty = TRUE;
       }
     }
 
     if ($not_empty) {
-      $form['subscribe_newsletter'] = array(
+      $form['campaignmonitor'] = array(
+        '#type' => 'fieldset',
+        '#title' => t('Newsletters'),
+        '#collapsible' => TRUE,
+        '#collapsed' => TRUE,
+      );
+
+      $form['campaignmonitor']['subscribe_newsletter'] = array(
           '#type' => 'checkboxes',
           '#title' => check_plain(t(variable_get(CM_CHECKBOX_DISPLAY_TEXT, CM_CHECKBOX_DISPLAY_TEXT_DEFAULT))),
           '#options' => $options,
@@ -146,27 +153,33 @@ function campaignmonitor_form_alter(&$form, &$form_state, $form_id) {
   }
 }
 
-
+/**
+ * Implementation of submit function for the hook_form_alter().
+ */
 function campaignmonitor_altered_form_submit($form, &$form_state) {
   $form_values = $form_state['values'];
   $listids = $form_values['subscribe_newsletter'];
 
   if (count($listids) > 0) {
-    if ('contact_mail_page' == $form_id) {
-      $form_values['message'] .= "\n\n" . t('Subscribed to newsletter(s).');
-    }
-
     // Replace api_key and list_id with your own details
     $api_key = variable_get(CM_API_KEY, '');
 
     foreach ($listids as $list_id) {
       if ($list_id) {
-        _campaignmonitor_add_subscriber($api_key, $list_id, check_plain($form_values['name']), check_plain($form_values['mail']));
+        if (_campaignmonitor_add_subscriber($api_key, $list_id, check_plain($form_values['name']), check_plain($form_values['mail']))) {
+          // Only add to message if the subscriber succeeded.
+          if ($form['form_id']['#value'] == 'contact_site_form') {
+            $form_values['message'] .= "\n\n" . t('You have been subscribed to newsletter(s).');
+          }
+        }
       }
     }
   }
 }
 
+/*
+ * Implements hook_block_info().
+ */
 function campaignmonitor_block_info() {
   $blocks = array();
 
@@ -183,6 +196,9 @@ function campaignmonitor_block_info() {
   return $blocks;
 }
 
+/**
+ * Implements hook_block_view().
+ */
 function campaignmonitor_block_view($delta) {
   $block = array();
 
@@ -196,6 +212,9 @@ function campaignmonitor_block_view($delta) {
   return $block;
 }
 
+/**
+ * Builds the subscription form used in blocks.
+ */
 function campaignmonitor_subscribe_form($form, &$form_state, $list_id) {
   global $user;
   $name = '';
@@ -347,6 +366,9 @@ function campaignmonitor_subscribe_form($form, &$form_state, $list_id) {
   return $form;
 }
 
+/**
+ * Subscription form submit handler.
+ */
 function campaignmonitor_subscribe_form_submit($form, &$form_state) {
   $form_values = $form_state['values'];
 
@@ -391,6 +413,9 @@ function campaignmonitor_subscribe_form_submit($form, &$form_state) {
   }
 }
 
+/**
+ * Implements newsletter archive menu callback function.
+ */
 function campaignmonitor_newsletter_archive() {
   $url = variable_get(CM_PAST_CAMPAIGN_URL, '');
   if ($url == '') {
@@ -402,6 +427,12 @@ function campaignmonitor_newsletter_archive() {
   return $content;
 }
 
+/**
+ * Get at all avaliable lists, which is based on the lists selected in the
+ * administration interface.
+ *
+ * @return array of lists
+ */
 function campaignmonitor_get_available_lists() {
   $all_lists = variable_get('campaignmonitor_lists', '');
   $available_lists = array();
