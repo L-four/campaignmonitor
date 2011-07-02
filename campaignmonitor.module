@@ -232,8 +232,7 @@ function campaignmonitor_subscribe_form($form, &$form_state, $list_id) {
 
   // Try to field out the name field, if it's to be displayed.
   if ($list->displayname) {
-    $account = campaignmonitor_get_field_key_values($user->uid);
-    $name = $account[$list->namekey];
+    $name = token_replace($list->namekey);
 
     if (!empty($email) && _campaignmonitor_is_subscribed(variable_get(CM_API_KEY, ''), $list_id, $email)) {
       // Also if subscribed get name
@@ -444,116 +443,6 @@ function campaignmonitor_get_available_lists() {
   
   return $available_lists;
 }
-
-/* CUSTOM MODULE HOOKS */
-
-/**
- * Get the available field keys
- */
-function campaignmonitor_get_field_keys($reset = FALSE) {
-  return module_invoke_all('campaignmonitor_field_keys', $reset);
-}
-
-/**
- * Get all the potential merge var values for a given user
- */
-function campaignmonitor_get_field_key_values($uid) {
-  if ($user = user_load($uid)) {
-    return module_invoke_all('campaignmonitor_field_key_values', $user);
-  }
-  return array();
-}
-
-/* END CUSTOM MODULE HOOKS */
-
-/* IMPLEMENTATION OF CUSTOM MODULE HOOKS */
-
-/**
- * Implementation of hook_campaignmonitor_field_keys
- */
-function campaignmonitor_campaignmonitor_field_keys($reset = FALSE) {
-  static $output;
-  if (!isset($output) || $reset) {
-    $output = array(0 => '<none>');
-
-    // Add user information fields.
-    $user_fields = array(
-      'name' => t('Username'),
-      'mail' => t('Email Address'),
-      'uid' => t('User ID'),
-      'signature' => t("User's Signature"),
-      'created' => t("User's Creation Date"),
-      'access' => t("User's Last Access Date"),
-    );
-
-    foreach ($user_fields as $key => $field) {
-      $output[$key] = t('User: @field', array('@field' => $field));
-    }
-
-    // If the profile module is avaliable, get fields from it.
-    if (function_exists('_profile_get_fields')) {
-      $categories = profile_categories();
-      if (!empty($categories)) {
-        foreach ($categories as $category) {
-          $result = _profile_get_fields($category['name'], $register);
-          while ($field = db_fetch_object($result)) {
-            $output[$field->name] = t('Profile: @cat - @field', array('@cat' => $field->category, '@field' => $field->title));
-          }
-        }
-      }
-    }
-
-    // TODO: This function do not exists in D7
-    if (function_exists('token_get_list')) {
-      $tokens = token_get_list(array('user', 'order'));
-      if (is_array($tokens['user'])) {
-        foreach ($tokens['user'] as $token => $name) {
-          $output['token_' . $token] = t('Token: @field', array('@field' => $name));
-        }
-      }
-    }
-  }
-
-  return $output;
-}
-
-/**
- * Implementation of hook_campaignmonitor_field_key_values
- */
-function campaignmonitor_campaignmonitor_field_key_values($user) {
-  $out = array();
-  $out = (array) $user;
-  foreach ((array) $user as $key => $value) {
-    if (is_array($value) && !in_array($key, array('roles', 'rdf_mapping'))) {
-      $out[$key] = implode('/', $value);
-    }
-    elseif (in_array($key, array('login', 'access', 'created'))) {
-      $out[$key] = date('c', $value);
-    }
-    elseif ($key != 'roles') {
-      $out[$key] = $value;
-    }
-  }
-
-  $out = array_merge($out, _campaignmonitor_get_user_tokens($user));
-  return $out;
-}
-
-/**
- * Get the user tokens for merging
- */
-function _campaignmonitor_get_user_tokens($user) {
-  $out = array();
-  if (function_exists('token_get_values')) {
-    $vars = token_get_values('user', $user);
-    foreach ($vars->tokens as $key => $value) {
-      $out['token_' . $value] = $vars->values[$key];
-    }
-  }
-  return $out;
-}
-
-/* END IMPLEMENTATION OF CUSTOM MODULE HOOKS */
 
 /* SOAP CALLS AND HELPERS */
 

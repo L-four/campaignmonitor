@@ -83,8 +83,7 @@ function campaignmonitor_user_page_form_submit($form, &$form_state) {
   foreach ($chosen_lists as $list_id => $list) {
     if ($subscribe[$list_id]) {
       // Try to get name from default key values.
-      $account = campaignmonitor_get_field_key_values($user->uid);
-      $name = isset($account[$list->namekey]) ? $account[$list->namekey] : '';
+      $name = !empty($list->namekey) ? token_replace($list->namekey) : '';
 
       // If subscribed, add if not already subscribed.
       if (isset($subscribe[$list_id]) && !$form_state['values']['is_subscribed_' . $list_id]) {

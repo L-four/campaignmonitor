@@ -190,13 +190,25 @@ function campaignmonitor_admin_settings_form() {
         '#default_value' => $saved_list->displayname,
       );
 
-      $form[CM_LISTS]['campaignmonitor_list_' . $list_id]['namekey'] = array(
-        '#type' => 'select',
+      $form[CM_LISTS]['campaignmonitor_list_' . $list_id]['token'] = array(
+        '#type' => 'fieldset',
         '#title' => t('Name'),
-        '#options' => campaignmonitor_get_field_keys(),
+        '#collapsible' => TRUE,
+        '#collapsed' => TRUE,
+      );
+
+      $form[CM_LISTS]['campaignmonitor_list_' . $list_id]['token']['namekey'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Name'),
         '#default_value' => $saved_list->namekey,
         '#description' => t('Use tokens to automatically fill in the name field.')
       );
+
+      if (module_exists('token')) {
+        $form[CM_LISTS]['campaignmonitor_list_' . $list_id]['token']['token_tree'] = array(
+          '#theme' => 'token_tree',
+        );
+      }
 
       if (count($list_custom_fields) > 0) {
         $form[CM_LISTS]['campaignmonitor_list_' . $list_id][CM_LISTS_CF] = array(
@@ -274,7 +286,7 @@ function campaignmonitor_admin_settings_form_validate($form, &$form_state) {
     $list->onregopage = $form_list['onregopage'];
     $list->onuserpage = $form_list['onuserpage'];
     $list->displayname = $form_list['displayname'];
-    $list->namekey = $form_list['namekey'];
+    $list->namekey = $form_list['token']['namekey'];
 
 
     $customfields = array();
