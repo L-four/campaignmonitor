@@ -125,14 +125,15 @@ class CampaignMonitor {
       }
       else {
         $result = $this->clientObj->get_lists();
-        if($result->was_successful()) {
+        if ($result->was_successful()) {
           foreach ($result->response as $list) {
             $this->lists[$list->ListID] = array(
               'name' => $list->Name,
             );
           }
           cache_set('campaignmonitor_lists', $this->lists, 'cache');
-        } else {
+        }
+        else {
           $this->addError(WATCHDOG_ERROR, t('Failed with code: @code.', array('@code' => $result->http_status_code)));
         }
       }
@@ -157,7 +158,7 @@ class CampaignMonitor {
       if ($obj = $this->createListObj($listId)) {
         $result = $obj->get();
 
-        if($result->was_successful()) {          
+        if ($result->was_successful()) {
           // Save details about this list.
           $this->lists[$listId]['details'] = array();
           foreach ($result->response as $key => $value) {
@@ -168,7 +169,8 @@ class CampaignMonitor {
 
           // Update cache with list details.
           cache_set('campaignmonitor_lists', $this->lists, 'cache');
-        } else {
+        }
+        else {
           $this->addError(WATCHDOG_ERROR, t('Failed with code: @code.', array('@code' => $result->http_status_code)));
         }
       }
@@ -192,7 +194,7 @@ class CampaignMonitor {
     if (!isset($this->lists[$listId]['CustomFields'])) {
       if ($obj = $this->createListObj($listId)) {
         $result = $obj->get_custom_fields();
-        if($result->was_successful()) {
+        if ($result->was_successful()) {
           // Save custom field about this list.
           $this->lists[$listId]['CustomFields'] = array();
           foreach ($result->response as $field) {
@@ -203,7 +205,8 @@ class CampaignMonitor {
           
           // Update cache with list details.
           cache_set('campaignmonitor_lists', $this->lists, 'cache');
-        } else {
+        }
+        else {
           $this->addError(WATCHDOG_ERROR, t('Failed with code: @code.', array('@code' => $result->http_status_code)));
         }
       }
@@ -222,11 +225,12 @@ class CampaignMonitor {
       if ($obj = $this->createSubscriberObj($listId)) {
         $subscriber[$listId] = array();
         $result = $obj->get($email);
-        if($result->was_successful()) {
+        if ($result->was_successful()) {
           foreach ($result->response as $key => $value) {
             $subscriber[$listId][$key] = $value;
           }
-        } else {
+        }
+        else {
           $this->addError(WATCHDOG_ERROR, t('Failed with code: @code.', array('@code' => $result->http_status_code)));
         }
       }
@@ -241,6 +245,35 @@ class CampaignMonitor {
       if ($result['State'] == 'Active') {
         return TRUE;
       }
+    }
+    return FALSE;
+  }
+
+  public function subscribe($listId, $name, $email, $customFields = array()) {
+    if ($obj = $this->createSubscriberObj($listId)) {
+      $result = $obj->add(array(
+          'EmailAddress' => $email,
+          'Name' => $name,
+          'CustomFields' => $customFields,
+          'Resubscribe' => true,
+      ));
+      if (!$result->was_successful()) {
+        $this->addError(WATCHDOG_ERROR, t('Failed with code: @code.', array('@code' => $result->http_status_code)));
+        return FALSE;
+      }
+      return TRUE;
+    }
+    return FALSE;
+  }
+
+  public function unsubscribe($listId, $email) {
+    if ($obj = $this->createSubscriberObj($listId)) {
+      $result = $obj->unsubscribe($email);
+      if (!$result->was_successful()) {
+        $this->addError(WATCHDOG_ERROR, t('Failed with code: @code.', array('@code' => $result->http_status_code)));
+        return FALSE;
+      }
+      return TRUE;
     }
     return FALSE;
   }
