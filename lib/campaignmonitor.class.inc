@@ -4,6 +4,7 @@ class CampaignMonitor {
 
   const CampaignMonitorCLIENT = 'csrest_clients.php';
   const CampaignMonitorLIST = 'csrest_lists.php';
+  const CampaignMonitorSubscribers = 'csrest_subscribers.php';
   private $libraryPath = '/lib/createsend-php/';
 
 
@@ -75,6 +76,13 @@ class CampaignMonitor {
   private function createListObj($listId) {
     if ($this->libraryLoad(self::CampaignMonitorLIST)) {
       return new CS_REST_Lists($listId, $this->api_key);
+    }
+    return FALSE;
+  }
+
+  private function createSubscriberObj($listId) {
+    if ($this->libraryLoad(self::CampaignMonitorSubscribers)) {
+      return new CS_REST_Subscribers($listId, $this->api_key);
     }
     return FALSE;
   }
@@ -166,7 +174,7 @@ class CampaignMonitor {
       }
     }
     
-    return $this->lists[$listId];
+    return $this->lists[$listId]['details'];
   }
 
   public function getCustomFields($listId) {
@@ -181,18 +189,15 @@ class CampaignMonitor {
       return FALSE;
     }
 
-    if (!isset($this->lists[$listId]['custom_fields'])) {
+    if (!isset($this->lists[$listId]['CustomFields'])) {
       if ($obj = $this->createListObj($listId)) {
         $result = $obj->get_custom_fields();
         if($result->was_successful()) {
           // Save custom field about this list.
-          $this->lists[$listId]['custom_fields'] = array();
+          $this->lists[$listId]['CustomFields'] = array();
           foreach ($result->response as $field) {
             foreach ($field as $name => $details) {
-//              if ($name == 'Key') {
-//                $details = str_replace(array('[', ']'), '', $details);
-//              }
-              $this->lists[$listId]['custom_fields'][$name] = $details;
+              $this->lists[$listId]['CustomFields'][$name] = $details;
             }
           }
           
@@ -204,7 +209,40 @@ class CampaignMonitor {
       }
     }
     
-    return $this->lists[$listId];
+    return $this->lists[$listId]['CustomFields'];
+  }
+
+  public function getSubscriber($listId, $email, $reset = FALSE) {
+    static $subscriber;
+    if (!isset($subscriber) || !isset($subscriber[$listId]) || $reset) {
+      if (!isset($subscriber)) {
+        $subscriber[] = array();
+      }
+
+      if ($obj = $this->createSubscriberObj($listId)) {
+        $subscriber[$listId] = array();
+        $result = $obj->get($email);
+        if($result->was_successful()) {
+          foreach ($result->response as $key => $value) {
+            $subscriber[$listId][$key] = $value;
+          }
+        } else {
+          $this->addError(WATCHDOG_ERROR, t('Failed with code: @code.', array('@code' => $result->http_status_code)));
+        }
+      }
+    }
+
+    return $subscriber[$listId];
+  }
+
+  public function isSubscribed($listId, $email, $reset = FALSE) {
+    $result = $this->getSubscriber($listId, $email, $reset);
+    if (!empty($result)) {
+      if ($result['State'] == 'Active') {
+        return TRUE;
+      }
+    }
+    return FALSE;
   }
 
   public function clearCache() {    
