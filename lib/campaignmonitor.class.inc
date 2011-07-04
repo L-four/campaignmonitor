@@ -227,17 +227,52 @@ class CampaignMonitor {
       return FALSE;
     }
 
-    // Load list details.
-    if (!isset($this->lists[$listId]['details'])) {
-      $this->getListDetails($listId);
-    }
-
-    // Load custom fields.
-    if (!isset($this->lists[$listId]['CustomFields'])) {
-      $this->getCustomFields($listId);
+    // Load list details and custom fields.
+    if (!$this->getListDetails($listId) || !$this->getCustomFields($listId)) {
+      $this->addError(WATCHDOG_ERROR, t('Could not retrive extended information for @listID.', array('@listID' => $listId)));
+      return FALSE;
     }
 
     return $this->lists[$listId];
+  }
+
+  /**
+   * Update remote list information. The $options array should have the fields:
+   * Title, UnsubscribePage, ConfirmedOptIn and ConfirmationSuccessPage.
+   *
+   * @param type $listId
+   * @param type $options
+   * @return type
+   */
+  public function updateList($listId, $options = array()) {
+
+    // Make sure that list is loaded.
+    if (!$this->getListDetails($listId)) {
+      $this->addError(WATCHDOG_ERROR, t('Could not retrive update list information for @listID.', array('@listID' => $listId)));
+      return FALSE;
+    }
+
+    // Get list object and update the list.
+    if ($obj = $this->createListObj($listId)) {
+      // @todo: check that the options are correct.
+      $result = $obj->update($options);
+      if($result->was_successful()) {
+
+        // Update cache local list.
+        $this->lists[$listId]['name'] = $options['Title'];
+        $this->lists[$listId]['details']['UnsubscribePage'] = $options['UnsubscribePage'];
+        $this->lists[$listId]['details']['ConfirmedOptIn'] = $options['ConfirmedOptIn'];
+        $this->lists[$listId]['details']['ConfirmationSuccessPage'] = $options['ConfirmationSuccessPage'];
+
+        // Update the cache.
+        cache_set('campaignmonitor_lists', $this->lists, 'cache');
+        return TRUE;
+      } else {
+        $this->addError(WATCHDOG_ERROR, t('Failed with code: @code.', array('@code' => $result->http_status_code)));
+      }
+    }
+
+    return FALSE;
   }
 
   public function getSubscriber($listId, $email, $reset = FALSE) {
