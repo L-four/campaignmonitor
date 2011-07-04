@@ -9,7 +9,7 @@ class CampaignMonitor {
 
 
   protected $api_key;
-  protected $client_key;
+  protected $client_id;
 
 
   private $logErrors = TRUE;
@@ -25,12 +25,12 @@ class CampaignMonitor {
    * use the static function CampaignMonitor::GetConnector().
    *
    * @param string $api_key
-   * @param string $client_key
+   * @param string $client_id
    * @param string $libraryPath optional
    */
-  private function __construct($api_key, $client_key, $libraryPath = NULL) {
-    $this->api_key = check_plain($api_key);
-    $this->client_key = check_plain($client_key);
+  private function __construct($api_key, $client_id, $libraryPath = NULL) {
+    $this->api_key = $api_key;
+    $this->client_id = $client_id;
     if ($libraryPath) {
       $libraryPath = $libraryPath;
     }
@@ -67,7 +67,7 @@ class CampaignMonitor {
     }
 
     if ($this->libraryLoad(self::CampaignMonitorCLIENT)) {
-      $this->clientObj = new CS_REST_Clients($this->client_key, $this->api_key);
+      $this->clientObj = new CS_REST_Clients($this->client_id, $this->api_key);
       return TRUE;
     }
     return FALSE;
@@ -199,7 +199,7 @@ class CampaignMonitor {
           $this->lists[$listId]['CustomFields'] = array();
           foreach ($result->response as $field) {
             foreach ($field as $name => $details) {
-              $this->lists[$listId]['CustomFields'][$name] = $details;
+              $this->lists[$listId]['CustomFields'][$field->Key][$name] = $details;
             }
           }
           
@@ -213,6 +213,31 @@ class CampaignMonitor {
     }
     
     return $this->lists[$listId]['CustomFields'];
+  }
+
+  public function getExtendedList($listId) {
+    // If lists have not been loaded yet, get them as they build the basic cache.
+    if (empty($this->lists)) {
+      $this->getLists();
+    }
+
+    // Test that the listId is valided.
+    if (!isset($this->lists[$listId])) {
+      $this->addError(WATCHDOG_ERROR, t('Unknown list id @listID.', array('@listID' => $listId)));
+      return FALSE;
+    }
+
+    // Load list details.
+    if (!isset($this->lists[$listId]['details'])) {
+      $this->getListDetails($listId);
+    }
+
+    // Load custom fields.
+    if (!isset($this->lists[$listId]['CustomFields'])) {
+      $this->getCustomFields($listId);
+    }
+
+    return $this->lists[$listId];
   }
 
   public function getSubscriber($listId, $email, $reset = FALSE) {
