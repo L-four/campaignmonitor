@@ -227,8 +227,9 @@ class CampaignMonitor {
       return FALSE;
     }
 
-    // Load list details and custom fields.
-    if (!$this->getListDetails($listId) || !$this->getCustomFields($listId)) {
+    // Load list details and custom fields (it's is_array has it may return an
+    // empty array).
+    if (!$this->getListDetails($listId) || !is_array($this->getCustomFields($listId))) {
       $this->addError(WATCHDOG_ERROR, t('Could not retrive extended information for @listID.', array('@listID' => $listId)));
       return FALSE;
     }
