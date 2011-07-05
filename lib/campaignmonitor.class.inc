@@ -329,11 +329,21 @@ class CampaignMonitor {
         $result = $obj->get($email);
         if ($result->was_successful()) {
           foreach ($result->response as $key => $value) {
-            $subscriber[$listId][$key] = $value;
+            if ($key == 'CustomFields') {
+              // Make the custom fields object into a keyed array.
+              $subscriber[$listId][$key] = array();
+              foreach ($value as $field) {
+                $subscriber[$listId][$key][$field->Key] = $field->Value;
+              }
+            }
+            else {
+              $subscriber[$listId][$key] = $value;
+            }
           }
         }
         else {
           $this->addError(WATCHDOG_ERROR, t('Failed with code: @code.', array('@code' => $result->http_status_code)));
+          return array();
         }
       }
     }
