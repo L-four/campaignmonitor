@@ -17,6 +17,7 @@ class CampaignMonitor {
   private $clientObj = NULL;
 
   private $lists = array();
+  private $listStats = array();
 
   private static $instance;
 
@@ -274,6 +275,46 @@ class CampaignMonitor {
     }
 
     return FALSE;
+  }
+
+  public function getListStats($listId) {
+    $fetch = FALSE;
+    if (!isset($this->listStats[$listId])) {
+      // Not found inside objec, try cache.
+      if (($cache = cache_get('campaignmonitor_list_stats')) && !empty($cache->data)) {
+        // Cache information found.
+        $this->listStats = $cache->data;
+        if (!isset($this->listStats[$listId])) {
+          // Not found inside cache either.
+          $fetch = TRUE;
+        }
+      }
+      else {
+        // No cache found or expired.
+        $fetch = TRUE;
+      }
+    }
+
+    if ($fetch) {
+      if ($obj = $this->createListObj($listId)) {
+        // Get stats from camapign monitor.
+        $result = $obj->get_stats();
+        if ($result->was_successful()) {
+          $this->listStats[$listId] = (array)$result->response;
+
+          // Update the cache.
+          $options = variable_get('campaignmonitor_general', array());
+          $timeout = isset($options['stats_cache_timeout']) ? $options['stats_cache_timeout'] : '360';
+          cache_set('campaignmonitor_list_stats', $this->listStats, 'cache', time() + $timeout);
+        }
+        else {
+          $this->addError(WATCHDOG_ERROR, t('Failed with code: @code.', array('@code' => $result->http_status_code)));
+          return FALSE;
+        }
+      }
+    }
+
+    return $this->listStats[$listId];
   }
 
   public function getSubscriber($listId, $email, $reset = FALSE) {
