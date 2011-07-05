@@ -8,3 +8,4 @@ package = Other
 files[] = campaignmonitor.module
 files[] = includes/campaignmonitor.admin.inc
 files[] = includes/campaignmonitor.user_page.inc
+files[] = lib/campaignmonitor.class.inc

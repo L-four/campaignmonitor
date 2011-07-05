@@ -14,19 +14,20 @@ function campaignmonitor_admin_settings_lists() {
   $lists = $cm->getLists();
 
   $header = array(
-    array('data' => 'title', 'field' => 'title', 'sort' => 'asc'),
-    array('data' => 'List ID', 'field' => 'id'),    
-    array('data' => 'Status', 'field' => 'status'),
-    array('data' => 'Edit', 'field' => 'edit'),
+    array('data' => t('Title'), 'field' => 'title', 'sort' => 'asc'),
+    array('data' => t('List ID'), 'field' => 'id'),
+    array('data' => t('Subscribed / Unsubscribed'), 'field' => 'status'),
+    array('data' => t('Edit'), 'field' => 'edit'),
   );
 
   $rows = array();
   foreach ($lists as $id => $list) {
+    $stats = $cm->getListStats($id);
     $rows[] = array(
       'data' => array(
           $list['name'],
           $id,
-          'Unknown',
+          $stats['TotalActiveSubscribers'] . ' / ' . $stats['TotalUnsubscribes'],
           l(t('Edit'), 'admin/config/services/campaignmonitor/lists/' . $id . '/edit'),
         ),
     );
@@ -56,7 +57,7 @@ function campaignmonitor_admin_settings_list_edit($form, &$form_state, $listId) 
 
   // Load extended information about the list.
   $list = $cm->getExtendedList($listId);
-  
+
   // Add list id to the form.
   $form['listId'] = array(
     '#type' => 'hidden',

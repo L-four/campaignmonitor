@@ -28,7 +28,7 @@ define('CM_CONNECTION_TIMEOUT', 'campaignmonitor_connection_timeout');
 define('CM_LISTS', 'campaignmonitor_lists');
 define('CM_LISTS_CF', 'campaignmonitor_lists_customfields');
 
-@require_once(drupal_get_path('module', 'campaignmonitor') . '/lib/CMBase.php');
+//@require_once(drupal_get_path('module', 'campaignmonitor') . '/lib/CMBase.php');
 
 /**
  * Implementation of hook_help().
@@ -68,13 +68,48 @@ function campaignmonitor_menu() {
 
   $items['admin/config/services/campaignmonitor'] = array(
     'title' => 'Campaign Monitor',
-    'description' => 'Setup Campaign Monitor values.',
+    'description' => 'General Campaign Monitor settings.',
     'page callback' => 'drupal_get_form',
-    'page arguments' => array('campaignmonitor_admin_settings_form'),
+    'page arguments' => array('campaignmonitor_admin_settings_general'),
     'access arguments' => array('administer campaignmonitor'),
     'type' => MENU_NORMAL_ITEM,
     'file' => 'includes/campaignmonitor.admin.inc',
   );
+
+  $items['admin/config/services/campaignmonitor/general'] = array(
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    'title' => 'General',
+    'weight' => -50,
+  );
+
+  $items['admin/config/services/campaignmonitor/lists'] = array(
+    'title' => 'Lists',
+    'page callback' => 'campaignmonitor_admin_settings_lists',
+    'access arguments' => array('administer campaignmonitor'),
+    'weight' => -40,
+    'type' => MENU_LOCAL_TASK,
+    'file' => 'includes/campaignmonitor_lists.admin.inc',
+  );
+
+  $items['admin/config/services/campaignmonitor/lists/%/edit'] = array(
+    'title' => 'Edit list',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('campaignmonitor_admin_settings_list_edit', 5),
+    'access arguments' => array('administer campaignmonitor'),
+    'type' => MENU_CALLBACK,
+    'file' => 'includes/campaignmonitor_lists.admin.inc',
+  );
+
+  $items['admin/config/services/campaignmonitor/states'] = array(
+    'title' => 'Statistics',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('campaignmonitor_admin_settings_stats'),
+    'access arguments' => array('administer campaignmonitor'),
+    'weight' => -30,
+    'type' => MENU_LOCAL_TASK,
+    'file' => 'includes/campaignmonitor_stats.admin.inc',
+  );
+
 
   $items['campaignmonitor/archive'] = array(
     'title' => 'Newsletter Archive',
