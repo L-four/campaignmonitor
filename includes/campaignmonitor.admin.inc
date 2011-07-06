@@ -54,6 +54,15 @@ function campaignmonitor_admin_settings_general() {
     );
 
 
+    $path = drupal_get_path('module', 'campaignmonitor') . '/lib/createsend-php/';
+    $form['campaignmonitor_general']['library_path'] = array(
+      '#type' => 'textfield',
+      '#title' => t('Library path'),
+      '#description' => t('Campign monitor library path.'),
+      '#default_value' => isset($defaults['library_path']) ? $defaults['library_path'] : $path,
+    );
+
+
     $form['clear_cache'] = array(
       '#type' => 'fieldset',
       '#title' => t('Clear cached data'),
@@ -75,4 +84,5 @@ function campaignmonitor_admin_settings_general() {
  */
 function campaignmonitor_clear_cache_submit($form, &$form_state) {
   CampaignMonitor::getConnector($form_state['values']['campaignmonitor_account']['api_key'], $form_state['values']['campaignmonitor_account']['client_id'])->clearCache();
+  drupal_set_message(t('Campaign Monitor cache cleared.'), 'status');
 }

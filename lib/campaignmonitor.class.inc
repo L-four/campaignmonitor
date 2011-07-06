@@ -5,7 +5,7 @@ class CampaignMonitor {
   const CampaignMonitorCLIENT = 'csrest_clients.php';
   const CampaignMonitorLIST = 'csrest_lists.php';
   const CampaignMonitorSubscribers = 'csrest_subscribers.php';
-  private $libraryPath = '/lib/createsend-php/';
+  private $libraryPath;
 
 
   protected $api_key;
@@ -14,7 +14,6 @@ class CampaignMonitor {
 
   private $logErrors = TRUE;
   private $errors = array();
-  private $clientObj = NULL;
 
   private $lists = array();
   private $listStats = array();
@@ -29,18 +28,14 @@ class CampaignMonitor {
    * @param string $client_id
    * @param string $libraryPath optional
    */
-  private function __construct($api_key, $client_id, $libraryPath = NULL) {
+  private function __construct($api_key, $client_id) {
     $this->api_key = $api_key;
     $this->client_id = $client_id;
-    if ($libraryPath) {
-      $libraryPath = $libraryPath;
-    }
 
-    // Get client
-    if (!$this->createClientObj()) {
-      echo "PIS";
-      exit(-1);
-    }
+    // Build library parh
+    $setting = variable_get('campaignmonitor_general', array());
+    $path = isset($setting['library_path']) ? $setting['library_path'] : 'lib/createsend-php/';
+    $this->libraryPath = drupal_get_path('module', 'campaignmonitor') . '/' . $path;
   }
 
   private function addError($type, $message) {
@@ -55,7 +50,7 @@ class CampaignMonitor {
 
   private function libraryLoad($file) {
     if ($this->libraryExists()) {
-      @require_once drupal_get_path('module', 'campaignmonitor') . $this->libraryPath . $file;
+      @require_once $this->libraryPath . $file;
       return TRUE;
     }
     $this->addError(WATCHDOG_ERROR, t('Unable to load client library.'));
@@ -63,14 +58,10 @@ class CampaignMonitor {
   }
 
   private function createClientObj() {
-    if ($this->clientObj) {
-      return TRUE;
-    }
-
     if ($this->libraryLoad(self::CampaignMonitorCLIENT)) {
-      $this->clientObj = new CS_REST_Clients($this->client_id, $this->api_key);
-      return TRUE;
+      return new CS_REST_Clients($this->client_id, $this->api_key);
     }
+    $this->addError(WATCHDOG_ERROR, t('Failed to locate the client library.'));
     return FALSE;
   }
 
@@ -78,6 +69,7 @@ class CampaignMonitor {
     if ($this->libraryLoad(self::CampaignMonitorLIST)) {
       return new CS_REST_Lists($listId, $this->api_key);
     }
+    $this->addError(WATCHDOG_ERROR, t('Failed to locate the list library.'));
     return FALSE;
   }
 
@@ -85,6 +77,7 @@ class CampaignMonitor {
     if ($this->libraryLoad(self::CampaignMonitorSubscribers)) {
       return new CS_REST_Subscribers($listId, $this->api_key);
     }
+    $this->addError(WATCHDOG_ERROR, t('Failed to locate the subscribe library.'));
     return FALSE;
   }
 
@@ -96,16 +89,16 @@ class CampaignMonitor {
    * @param string $libraryPath
    * @return object CampaingMonitor 
    */
-  public static function getConnector($api_key, $client_key, $libraryPath = NULL) {
+  public static function getConnector($api_key, $client_key) {
     if (!isset(self::$instance)) {
       $class = __CLASS__;
-      self::$instance = new $class($api_key, $client_key, $libraryPath);
+      self::$instance = new $class($api_key, $client_key);
     }
     return self::$instance;
   }
 
   public function libraryExists() {
-    if (file_exists(drupal_get_path('module', 'campaignmonitor') . $this->libraryPath)) {
+    if (file_exists($this->libraryPath)) {
       return TRUE;
     }
     return FALSE;
@@ -125,17 +118,22 @@ class CampaignMonitor {
         $this->lists = $cache->data;
       }
       else {
-        $result = $this->clientObj->get_lists();
-        if ($result->was_successful()) {
-          foreach ($result->response as $list) {
-            $this->lists[$list->ListID] = array(
-              'name' => $list->Name,
-            );
+        if ($obj = $this->createClientObj()) {
+          $result = $obj->get_lists();
+          if ($result->was_successful()) {
+            foreach ($result->response as $list) {
+              $this->lists[$list->ListID] = array(
+                'name' => $list->Name,
+              );
+            }
+            cache_set('campaignmonitor_lists', $this->lists, 'cache');
           }
-          cache_set('campaignmonitor_lists', $this->lists, 'cache');
+          else {
+            $this->addError(WATCHDOG_ERROR, t('Failed with code: @code.', array('@code' => $result->http_status_code)));
+          }
         }
         else {
-          $this->addError(WATCHDOG_ERROR, t('Failed with code: @code.', array('@code' => $result->http_status_code)));
+          return FALSE;
         }
       }
     }
@@ -158,7 +156,6 @@ class CampaignMonitor {
     if (!isset($this->lists[$listId]['details'])) {
       if ($obj = $this->createListObj($listId)) {
         $result = $obj->get();
-
         if ($result->was_successful()) {
           // Save details about this list.
           $this->lists[$listId]['details'] = array();
@@ -173,7 +170,11 @@ class CampaignMonitor {
         }
         else {
           $this->addError(WATCHDOG_ERROR, t('Failed with code: @code.', array('@code' => $result->http_status_code)));
+          return FALSE;
         }
+      }
+      else {        
+        return FALSE;
       }
     }
     
@@ -211,6 +212,9 @@ class CampaignMonitor {
           $this->addError(WATCHDOG_ERROR, t('Failed with code: @code.', array('@code' => $result->http_status_code)));
         }
       }
+      else {
+        return FALSE;
+      }
     }
     
     return $this->lists[$listId]['CustomFields'];
@@ -247,7 +251,6 @@ class CampaignMonitor {
    * @return type
    */
   public function updateList($listId, $options = array()) {
-
     // Make sure that list is loaded.
     if (!$this->getListDetails($listId)) {
       $this->addError(WATCHDOG_ERROR, t('Could not retrive update list information for @listID.', array('@listID' => $listId)));
@@ -273,7 +276,6 @@ class CampaignMonitor {
         $this->addError(WATCHDOG_ERROR, t('Failed with code: @code.', array('@code' => $result->http_status_code)));
       }
     }
-
     return FALSE;
   }
 
@@ -312,6 +314,9 @@ class CampaignMonitor {
           return FALSE;
         }
       }
+      else {
+        return FALSE;
+      }
     }
 
     return $this->listStats[$listId];
@@ -345,6 +350,9 @@ class CampaignMonitor {
           $this->addError(WATCHDOG_ERROR, t('Failed with code: @code.', array('@code' => $result->http_status_code)));
           return array();
         }
+      }
+      else {
+        return FALSE;
       }
     }
 
@@ -392,7 +400,6 @@ class CampaignMonitor {
 
   public function clearCache() {    
     cache_clear_all('campaignmonitor_lists', 'cache');
-    cache_clear_all('campaignmonitor_list_detail', 'cache');
-    cache_clear_all('campaignmonitor_custom_fields', 'cache');
+    cache_clear_all('campaignmonitor_list_stats', 'cache');
   }
 }
