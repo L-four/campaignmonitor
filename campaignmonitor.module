@@ -91,17 +91,6 @@ function campaignmonitor_menu() {
     'file' => 'includes/campaignmonitor_stats.admin.inc',
   );
 
-//  $items['user/%user/newsletters'] = array(
-//    'title' => 'My Newsletters',
-//    'page callback' => 'drupal_get_form',
-//    'page arguments' => array('campaignmonitor_user_page_form'),
-//    'access callback' => 'campaignmonitor_user_page_access',
-//    'access arguments' => array(1),
-//    'type' => MENU_LOCAL_TASK,
-//    'file' => 'includes/campaignmonitor.user_page.inc',
-//    'weight' => 5,
-//  );
-
   return $items;
 }
 
@@ -166,6 +155,9 @@ function campaignmonitor_block_view($delta) {
     $lists = CampaignMonitor::getConnector($account['api_key'], $account['client_id'])->getLists();
     $block['subject'] = t($lists[$delta]['name']);
     $block['content'] = drupal_get_form('campaignmonitor_subscribe_form', $delta, $account);
+
+    // Add some basic styling of form elements.
+    drupal_add_css(drupal_get_path('module', 'campaignmonitor'). '/css/campaignmonitor.theme.css');
   }
 
   return $block;
@@ -176,16 +168,24 @@ function campaignmonitor_block_view($delta) {
  */
 function campaignmonitor_subscribe_form($form, &$form_state, $list_id, $account) {
   global $user;
-  $form = array('#tree' => TRUE);
 
-
-  // Get campaign monitor object.
+  //cd Get campaign monitor object.
   $cm = CampaignMonitor::getConnector($account['api_key'], $account['client_id']);
 
   // Get lists form campaign monitor (or the local cache).
   $list = $cm->getExtendedList($list_id);
   $list_options = variable_get('campaignmonitor_list_' . $list_id, array());
-  
+
+  // Set options for the form.
+  $form = array(
+    '#tree' => TRUE,
+    '#attributes' => array(
+      'class' => array(
+        'campaignmonitor-subscribe-form',
+        'campaignmonitor-subscribe-form-' . str_replace(' ', '-', strtolower($list['name'])),
+      ),
+    ),
+  );
 
   // Try to get e-mail address from the user object.
   if ($user->uid != 0) {
@@ -204,6 +204,7 @@ function campaignmonitor_subscribe_form($form, &$form_state, $list_id, $account)
       '#type' => 'textfield',
       '#title' => t('Name'),
       '#required' => TRUE,
+      '#maxlength' => 200,
       '#default_value' => isset($name) ? $name : '',
     );
   }
@@ -212,6 +213,7 @@ function campaignmonitor_subscribe_form($form, &$form_state, $list_id, $account)
     '#type' => 'textfield',
     '#title' => t('Email'),
     '#required' => TRUE,
+    '#maxlength' => 200,
     '#default_value' => isset($email) ? $email : '',
   );
 
@@ -230,6 +232,7 @@ function campaignmonitor_subscribe_form($form, &$form_state, $list_id, $account)
         $form['CustomFields'][$form_key] = array(
           '#type' => 'textfield',
           '#title' => t($field['FieldName']),
+          '#maxlength' => 200,
           '#default_value' => isset($subscriber['CustomFields']) ? $subscriber['CustomFields'][$field['FieldName']] : '',
         );
         break;
@@ -289,14 +292,6 @@ function campaignmonitor_subscribe_form($form, &$form_state, $list_id, $account)
         break;
     }
   }
-
-  // Add archive link.
-//  $past_campaign_url = variable_get(CM_PAST_CAMPAIGN_URL, FALSE);
-//  if (user_access('access archive') && $past_campaign_url) {
-//    $form['archive_link'] = array(
-//      '#markup' => l(t('Newsletter Archive'), 'campaignmonitor/archive'),
-//    );
-//  }
 
   $form['list_id'] = array(
     '#type' => 'hidden',
