@@ -17,6 +17,7 @@ class CampaignMonitor {
 
   private $lists = array();
   private $listStats = array();
+  private $campaigns = array();
 
   private static $instance;
 
@@ -322,6 +323,43 @@ class CampaignMonitor {
     return $this->listStats[$listId];
   }
 
+  public function getCampaigns() {
+    if (empty($this->campaigns)) {
+      if (($cache = cache_get('campaignmonitor_campigns')) && !empty($cache->data)) {
+        // Cache information found.
+        $this->campaigns = $cache->data;
+      }
+      else {
+        if ($obj = $this->createClientObj()) {
+          $result = $obj->get_campaigns();
+          if ($result->was_successful()) {
+            // Build an array foreach campaign returned.
+            foreach ($result->response as $campaign) {
+              $this->campaigns[$campaign->CampaignID] = array(
+                'Name' => $campaign->Name,
+                'Subject' => $campaign->Subject,
+                'Sent' => strtotime($campaign->SentDate),
+                'Recipients' => $campaign->TotalRecipients,
+                'Link' => $campaign->WebVersionURL,
+              );
+            }
+            // Save the campaign information in the cache.
+            cache_set('campaignmonitor_campaigns', $this->campaigns, 'cache');
+          }
+          else {
+            $this->addError(WATCHDOG_ERROR, t('Failed with code: @code.', array('@code' => $result->http_status_code)));
+            return FALSE;
+          }
+        }
+        else {
+          return FALSE;
+        }
+      }
+    }
+    return $this->campaigns;
+  }
+
+
   public function getSubscriber($listId, $email, $reset = FALSE) {
     static $subscriber;
     if (!isset($subscriber) || !isset($subscriber[$listId]) || $reset) {
@@ -401,5 +439,6 @@ class CampaignMonitor {
   public function clearCache() {    
     cache_clear_all('campaignmonitor_lists', 'cache');
     cache_clear_all('campaignmonitor_list_stats', 'cache');
+    cache_clear_all('campaignmonitor_campigns', 'cache');
   }
 }
