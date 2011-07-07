@@ -12,7 +12,7 @@ class CampaignMonitor {
   protected $client_id;
 
 
-  private $logErrors = TRUE;
+  private $logErrors = FALSE;
   private $errors = array();
 
   private $lists = array();
@@ -34,13 +34,18 @@ class CampaignMonitor {
     $this->api_key = $api_key;
     $this->client_id = $client_id;
 
-    // Build library parh
+    // Build library path.
     $setting = variable_get('campaignmonitor_general', array());
-    if ($setting['library_path']) {
+    if (isset($setting['library_path']) && !empty($setting['library_path'])) {
       $this->libraryPath = $setting['library_path'];
     }
     else {
       $this->libraryPath = drupal_get_path('module', 'campaignmonitor') . '/lib/createsend-php/';
+    }
+
+    // Enable disable logging.
+    if (isset($setting['logging'])) {
+      $this->logErrors = $setting['logging'];
     }
   }
 

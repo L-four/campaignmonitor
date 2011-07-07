@@ -69,6 +69,13 @@ function campaignmonitor_admin_settings_general() {
       '#default_value' => isset($defaults['archive']) ? $defaults['archive'] : 0,
     );
 
+    $form['campaignmonitor_general']['logging'] = array(
+      '#type' => 'checkbox',
+      '#title' => t('Log errors'),
+      '#description' => t('Log communication error with the campaign monitor service, if any.'),
+      '#default_value' => isset($defaults['logging']) ? $defaults['logging'] : 0,
+    );
+
     $form['clear_cache'] = array(
       '#type' => 'fieldset',
       '#title' => t('Clear cached data'),
