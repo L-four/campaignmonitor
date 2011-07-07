@@ -18,6 +18,7 @@ class CampaignMonitor {
   private $lists = array();
   private $listStats = array();
   private $campaigns = array();
+  private $subscribers = array();
 
   private static $instance;
 
@@ -35,8 +36,12 @@ class CampaignMonitor {
 
     // Build library parh
     $setting = variable_get('campaignmonitor_general', array());
-    $path = isset($setting['library_path']) ? $setting['library_path'] : 'lib/createsend-php/';
-    $this->libraryPath = drupal_get_path('module', 'campaignmonitor') . '/' . $path;
+    if ($setting['library_path']) {
+      $this->libraryPath = $setting['library_path'];
+    }
+    else {
+      $this->libraryPath = drupal_get_path('module', 'campaignmonitor') . '/lib/createsend-php/';
+    }
   }
 
   private function addError($type, $message) {
@@ -80,6 +85,11 @@ class CampaignMonitor {
     }
     $this->addError(WATCHDOG_ERROR, t('Failed to locate the subscribe library.'));
     return FALSE;
+  }
+
+  private function getCacheTimeout() {
+    $options = variable_get('campaignmonitor_general', array());
+    return time() + (isset($options['cache_timeout']) ? $options['cache_timeout'] : '360');
   }
 
   /**
@@ -306,9 +316,7 @@ class CampaignMonitor {
           $this->listStats[$listId] = (array)$result->response;
 
           // Update the cache.
-          $options = variable_get('campaignmonitor_general', array());
-          $timeout = isset($options['stats_cache_timeout']) ? $options['stats_cache_timeout'] : '360';
-          cache_set('campaignmonitor_list_stats', $this->listStats, 'cache', time() + $timeout);
+          cache_set('campaignmonitor_list_stats', $this->listStats, 'cache', $this->getCacheTimeout());
         }
         else {
           $this->addError(WATCHDOG_ERROR, t('Failed with code: @code.', array('@code' => $result->http_status_code)));
@@ -325,7 +333,7 @@ class CampaignMonitor {
 
   public function getCampaigns() {
     if (empty($this->campaigns)) {
-      if (($cache = cache_get('campaignmonitor_campigns')) && !empty($cache->data)) {
+      if (($cache = cache_get('campaignmonitor_campaigns')) && !empty($cache->data)) {
         // Cache information found.
         $this->campaigns = $cache->data;
       }
@@ -343,8 +351,8 @@ class CampaignMonitor {
                 'Link' => $campaign->WebVersionURL,
               );
             }
-            // Save the campaign information in the cache.
-            cache_set('campaignmonitor_campaigns', $this->campaigns, 'cache');
+            // Save campaigns in the cache.
+            cache_set('campaignmonitor_campaigns', $this->campaigns, 'cache', $this->getCacheTimeout());
           }
           else {
             $this->addError(WATCHDOG_ERROR, t('Failed with code: @code.', array('@code' => $result->http_status_code)));
@@ -361,28 +369,42 @@ class CampaignMonitor {
 
 
   public function getSubscriber($listId, $email, $reset = FALSE) {
-    static $subscriber;
-    if (!isset($subscriber) || !isset($subscriber[$listId]) || $reset) {
-      if (!isset($subscriber)) {
-        $subscriber[] = array();
+    $fetch = FALSE;
+    if (!isset($this->subscribers[$listId . $email])) {
+      // Not found inside objec, try cache.
+      if (($cache = cache_get('campaignmonitor_subscribers')) && !empty($cache->data)) {
+        // Cache information found.
+        $this->subscribers = $cache->data;
+        if (!isset($this->subscribers[$listId . $email])) {
+          // Not found inside cache either.
+          $fetch = TRUE;
+        }
       }
+      else {
+        // No cache found or expired.
+        $fetch = TRUE;
+      }
+    }
 
+    if ($fetch) {
       if ($obj = $this->createSubscriberObj($listId)) {
-        $subscriber[$listId] = array();
+        $this->subscribers[$listId . $email] = array();
         $result = $obj->get($email);
         if ($result->was_successful()) {
           foreach ($result->response as $key => $value) {
             if ($key == 'CustomFields') {
               // Make the custom fields object into a keyed array.
-              $subscriber[$listId][$key] = array();
+              $this->subscribers[$listId . $email][$key] = array();
               foreach ($value as $field) {
-                $subscriber[$listId][$key][$field->Key] = $field->Value;
+                $this->subscribers[$listId . $email][$key][$field->Key] = $field->Value;
               }
             }
             else {
-              $subscriber[$listId][$key] = $value;
+              $this->subscribers[$listId . $email][$key] = $value;
             }
           }
+          // Save the campaign information in the cache.
+          cache_set('campaignmonitor_subscribers', $this->subscribers, 'cache', $this->getCacheTimeout());
         }
         else {
           $this->addError(WATCHDOG_ERROR, t('Failed with code: @code.', array('@code' => $result->http_status_code)));
@@ -394,7 +416,7 @@ class CampaignMonitor {
       }
     }
 
-    return $subscriber[$listId];
+    return $this->subscribers[$listId . $email];
   }
 
   public function isSubscribed($listId, $email, $reset = FALSE) {
@@ -439,6 +461,7 @@ class CampaignMonitor {
   public function clearCache() {    
     cache_clear_all('campaignmonitor_lists', 'cache');
     cache_clear_all('campaignmonitor_list_stats', 'cache');
-    cache_clear_all('campaignmonitor_campigns', 'cache');
+    cache_clear_all('campaignmonitor_campaigns', 'cache');
+    cache_clear_all('campaignmonitor_subscribers', 'cache');
   }
 }

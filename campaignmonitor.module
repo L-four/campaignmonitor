@@ -9,6 +9,8 @@
  * about this PHP API see By ssherriff: http://code.google.com/p/campaignmonitor-php/
  */
 
+define('CAMPAIGNMONITOR_ARCHIVE_DELTA', 'HASHc32bde51684d37a36679301a1e9');
+
 /**
  * Implementation of hook_help().
  */
@@ -89,14 +91,6 @@ function campaignmonitor_menu() {
     'file' => 'includes/campaignmonitor_stats.admin.inc',
   );
 
-
-//  $items['campaignmonitor/archive'] = array(
-//    'title' => 'Newsletter Archive',
-//    'page callback' => 'campaignmonitor_newsletter_archive',
-//    'access arguments' => array('access archive'),
-//    'type' => MENU_SUGGESTED_ITEM,
-//  );
-
 //  $items['user/%user/newsletters'] = array(
 //    'title' => 'My Newsletters',
 //    'page callback' => 'drupal_get_form',
@@ -110,18 +104,6 @@ function campaignmonitor_menu() {
 
   return $items;
 }
-
-///**
-// * Access callback for the user newsletters page.
-// */
-//function campaignmonitor_user_page_access($account) {
-//  global $user;
-//  $display_on = variable_get(CM_DISPLAY_ON, array());
-//  if ($display_on['userpage'] && $user->uid && $user->uid == $account->uid && user_access('join newsletter')) {
-//    return TRUE;
-//  }
-//  return FALSE;
-//}
 
 /*
  * Implements hook_block_info().
@@ -141,6 +123,13 @@ function campaignmonitor_block_info() {
         );
       }
     }
+
+    $settings = variable_get('campaignmonitor_general', FALSE);
+    if ($settings && isset($settings['archive'])) {
+      $blocks[CAMPAIGNMONITOR_ARCHIVE_DELTA] = array(
+        'info' => t('Campaign monitor newsletter archive'),
+      );
+    }
   }
 
   return $blocks;
@@ -152,13 +141,32 @@ function campaignmonitor_block_info() {
 function campaignmonitor_block_view($delta) {
   $block = array();
 
-  // Get lists form Campaign Monitor.
-  $account = variable_get('campaignmonitor_account', FALSE);
-  $lists = CampaignMonitor::getConnector($account['api_key'], $account['client_id'])->getLists();
-  $block['subject'] = $lists[$delta]['name'];
-  $block['content'] = drupal_get_form('campaignmonitor_subscribe_form', $delta, $account);
-  
-  //theme('campaignmonitor_block_content', $delta);
+  if (CAMPAIGNMONITOR_ARCHIVE_DELTA == $delta) {
+    // Connect to campaign monitor and get past campaigns.
+    $account = variable_get('campaignmonitor_account', FALSE);
+    $campaigns = CampaignMonitor::getConnector($account['api_key'], $account['client_id'])->getCampaigns();
+    if ($campaigns) {
+      $content = '<ul>';
+      foreach ($campaigns as $campaign) {
+        $content .= '<li>' . l($campaign['Name'], $campaign['Link'] ) . ' ' . format_date($campaign['Sent'], 'short') . '</li>';
+      }
+      $content .= '</ul>';
+
+      // Build block.
+      $block['subject'] = t('Newsletter archive');
+      $block['content'] = array('#markup' => $content);
+    }
+    else {
+      drupal_set_message(t('Unable to fetch campaigns from Campaign monitor.'), 'error');
+    }
+  }
+  else {
+    // Get lists form Campaign Monitor.
+    $account = variable_get('campaignmonitor_account', FALSE);
+    $lists = CampaignMonitor::getConnector($account['api_key'], $account['client_id'])->getLists();
+    $block['subject'] = t($lists[$delta]['name']);
+    $block['content'] = drupal_get_form('campaignmonitor_subscribe_form', $delta, $account);
+  }
 
   return $block;
 }

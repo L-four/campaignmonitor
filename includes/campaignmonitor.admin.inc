@@ -45,12 +45,12 @@ function campaignmonitor_admin_settings_general() {
       '#tree' => TRUE,
     );
  
-    $form['campaignmonitor_general']['stats_cache_timeout'] = array(
+    $form['campaignmonitor_general']['cache_timeout'] = array(
       '#type' => 'textfield',
-      '#title' => t('Statistics cache timeout'),
-      '#description' => t('Cahce timeout in seconds for statistic information.'),
+      '#title' => t('Cache timeout'),
+      '#description' => t('Cahce timeout in seconds for stats, subscribers and archive information.'),
       '#size' => 4,
-      '#default_value' => isset($defaults['stats_cache_timeout']) ? $defaults['stats_cache_timeout'] : '360',
+      '#default_value' => isset($defaults['cache_timeout']) ? $defaults['cache_timeout'] : '360',
     );
 
 
@@ -62,6 +62,12 @@ function campaignmonitor_admin_settings_general() {
       '#default_value' => isset($defaults['library_path']) ? $defaults['library_path'] : $path,
     );
 
+    $form['campaignmonitor_general']['archive'] = array(
+      '#type' => 'checkbox',
+      '#title' => t('Newletter archive'),
+      '#description' => t('Create a block with links to HTML versions of past campaigns.'),
+      '#default_value' => isset($defaults['archive']) ? $defaults['archive'] : 0,
+    );
 
     $form['clear_cache'] = array(
       '#type' => 'fieldset',
@@ -75,8 +81,18 @@ function campaignmonitor_admin_settings_general() {
       '#submit' => array('campaignmonitor_clear_cache_submit'),
     );
   }
-  
-  return system_settings_form($form);
+
+  $form = system_settings_form($form);
+  $form['#submit'][] = 'campaignmonitor_admin_settings_general_submit';
+
+  return $form;
+}
+
+function campaignmonitor_admin_settings_general_submit($form, &$form_state) {
+  // If archive block have been selected, rehash the block cache.
+  if ($form_state['values']['campaignmonitor_general']['archive']) {
+    _block_rehash();
+  }
 }
 
 /**
