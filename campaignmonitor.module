@@ -317,13 +317,12 @@ function campaignmonitor_subscribe_form($form, &$form_state, $list_id, $account)
   );
 
   $form['submit'] = array('#type' => 'submit', '#value' => t('Submit'));
+  $form['#validate'][] = 'campaignmonitor_subscribe_form_validate';
+
   return $form;
 }
 
-/**
- * Subscription form submit handler.
- */
-function campaignmonitor_subscribe_form_submit($form, &$form_state) {
+function campaignmonitor_subscribe_form_validate($form, &$form_state) {
   // Get a campaign monitor object.
   $account = variable_get('campaignmonitor_account', FALSE);
   $cm = CampaignMonitor::getConnector($account['api_key'], $account['client_id']);
@@ -356,10 +355,15 @@ function campaignmonitor_subscribe_form_submit($form, &$form_state) {
   $name = check_plain($form_state['values']['name']);
   $email = check_plain($form_state['values']['email']);
 
-  if ($cm->subscribe($list_id, $name, $email, $custom_fields)) {
-    drupal_set_message(t('You are now subscribed to the selected list(s).'), 'status');
+  if (!$cm->subscribe($list_id, $name, $email, $custom_fields)) {
+    form_set_error('', t('You where not subscribed to the list, please try again later.'));
+    return FALSE;
   }
-  else {
-    drupal_set_message(t('You where not subscribed to the list, please try again later.'), 'error');
-  }
+}
+
+/**
+ * Subscription form submit handler.
+ */
+function campaignmonitor_subscribe_form_submit($form, &$form_state) {
+  drupal_set_message(t('You are now subscribed to the selected list(s).'), 'status');
 }

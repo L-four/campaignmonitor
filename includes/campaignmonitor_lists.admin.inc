@@ -269,10 +269,7 @@ function campaignmonitor_admin_settings_list_create_form_validate($form, &$form_
                             $form_state['values']['UnsubscribePage'],
                             $form_state['values']['ConfirmedOptIn'],
                             $form_state['values']['ConfirmationSuccessPage']);
-  if ($result) {
-    drupal_set_message('List has been created at Campaign monitor.', 'status');
-  }
-  else {
+  if (!$result) {
     $error = $cm->getLatestError();
     form_set_error('listname', $error['message']);
     return FALSE;
