@@ -352,6 +352,26 @@ class CampaignMonitor {
     return FALSE;
   }
 
+  public function createList($client_id, $title, $unsubscribePage = '', $confirmedOptIn = FALSE, $confirmationSuccessPage = '') {
+    if ($obj = $this->createListObj(NULL)) {
+      $result = $obj->create($client_id, array(
+        'Title' => check_plain($title),
+        'UnsubscribePage' => check_plain($unsubscribePage),
+        'ConfirmedOptIn' => $confirmedOptIn,
+        'ConfirmationSuccessPage' => check_plain($confirmationSuccessPage),
+      ));
+      if ($result->was_successful()) {
+        $this->clearCache();
+        return TRUE;
+      }
+      else {
+        $this->addError(WATCHDOG_ERROR, t('Failed with code: @code.', array('@code' => $result->http_status_code)));
+        return FALSE;
+      }
+    }
+    return FALSE;
+  }
+
   public function getCampaigns() {
     if (empty($this->campaigns)) {
       if (($cache = cache_get('campaignmonitor_campaigns')) && !empty($cache->data)) {

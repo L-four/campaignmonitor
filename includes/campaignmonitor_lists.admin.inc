@@ -35,7 +35,7 @@ function campaignmonitor_admin_settings_lists() {
           $list['name'],
           $id,
           $stats['TotalActiveSubscribers'] . ' / ' . $stats['TotalUnsubscribes'],
-          implode(' | ', $operations),
+          implode(' ', $operations),
         ),
     );
   }
@@ -107,7 +107,7 @@ function campaignmonitor_admin_settings_list_edit($form, &$form_state, $listId) 
   $form[$form_key]['options']['ConfirmedOptIn'] = array(
     '#type' => 'checkbox',
     '#title' => t('Confirmed Opt In'),
-    '#options' => array(1),
+    //'#options' => array('1'),
     '#default_value' => $list['details']['ConfirmedOptIn'],
   );
   
@@ -210,15 +210,68 @@ function campaignmonitor_admin_settings_list_delete_submit($form, &$form_state) 
   $cm = CampaignMonitor::getConnector($account['api_key'], $account['client_id']);
 
   // Delete the list at campaign monitor.
-  $msg = 'The list could not be deleted.';
   if ($cm->deleteList($form_state['values']['list_id'])) {
-    $msg = 'The list have been deleted.';
+    drupal_set_message(t('The list have been deleted.'), 'status');
+  }
+  else {
+    drupal_set_message(t('The list could not be deleted.'), 'error');
   }
 
   // Clear blocks cache.
   _block_rehash();
 
   // Set message and redirect to list overview.
-  drupal_set_message(t($msg));
+
   $form_state['redirect'] = 'admin/config/services/campaignmonitor/lists';
+}
+
+
+function campaignmonitor_admin_settings_list_create_form() {
+  $form = array();
+
+  $form['listname'] = array(
+    '#type' => 'textfield',
+    '#title' => t('List name'),
+    '#default_value' => '',
+    '#required' => TRUE,
+  );
+
+  $form['UnsubscribePage'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Unsubscribe page'),
+    '#default_value' => '',
+  );
+
+  $form['ConfirmationSuccessPage'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Confirmation success page'),
+    '#default_value' => '',
+  );
+
+  $form['ConfirmedOptIn'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Confirmed Opt In'),
+    '#default_value' => false,
+  );
+
+  $form = system_settings_form($form);
+  $form['#submit'] = array('campaignmonitor_admin_settings_list_create_form_submit');
+  
+  return $form;
+}
+
+function campaignmonitor_admin_settings_list_create_form_submit($form, &$form_state) {
+  $account = variable_get('campaignmonitor_account', array());
+  $cm = CampaignMonitor::getConnector($account['api_key'], $account['client_id']);
+  $result = $cm->createList($account['client_id'],
+                            $form_state['values']['listname'],
+                            $form_state['values']['UnsubscribePage'],
+                            $form_state['values']['ConfirmedOptIn'],
+                            $form_state['values']['ConfirmationSuccessPage']);
+  if ($result) {
+    drupal_set_message('List has been created at Campaign monitor.', 'status');
+  }
+  else {
+    drupal_set_message('List could not be created at Campaign monitor.', 'error');
+  }
 }

@@ -72,6 +72,15 @@ function campaignmonitor_menu() {
     'file' => 'includes/campaignmonitor_lists.admin.inc',
   );
 
+  $items['admin/config/services/campaignmonitor/lists/add'] = array(
+    'title' => 'Add list',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('campaignmonitor_admin_settings_list_create_form'),
+    'access arguments' => array('administer campaignmonitor'),
+    'type' => MENU_CALLBACK,
+    'file' => 'includes/campaignmonitor_lists.admin.inc',
+  );
+
   $items['admin/config/services/campaignmonitor/lists/%/edit'] = array(
     'title' => 'Edit list',
     'page callback' => 'drupal_get_form',
