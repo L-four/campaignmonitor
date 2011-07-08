@@ -336,6 +336,22 @@ class CampaignMonitor {
     return $this->listStats[$listId];
   }
 
+  public function deleteList($listId) {
+    if ($obj = $this->createListObj($listId)) {
+      $result = $obj->delete();
+      if ($result->was_successful()) {
+        unset($this->lists[$listId]);
+        cache_set('campaignmonitor_lists', $this->lists, 'cache');
+        return TRUE;
+      }
+      else {
+        $this->addError(WATCHDOG_ERROR, t('Failed with code: @code.', array('@code' => $result->http_status_code)));
+        return FALSE;
+      }
+    }
+    return FALSE;
+  }
+
   public function getCampaigns() {
     if (empty($this->campaigns)) {
       if (($cache = cache_get('campaignmonitor_campaigns')) && !empty($cache->data)) {

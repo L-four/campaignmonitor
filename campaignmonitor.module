@@ -81,6 +81,15 @@ function campaignmonitor_menu() {
     'file' => 'includes/campaignmonitor_lists.admin.inc',
   );
 
+  $items['admin/config/services/campaignmonitor/lists/%/delete'] = array(
+    'title' => 'Edit list',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('campaignmonitor_admin_settings_list_delete', 5),
+    'access arguments' => array('administer campaignmonitor'),
+    'type' => MENU_CALLBACK,
+    'file' => 'includes/campaignmonitor_lists.admin.inc',
+  );
+
   $items['admin/config/services/campaignmonitor/states'] = array(
     'title' => 'Statistics',
     'page callback' => 'drupal_get_form',

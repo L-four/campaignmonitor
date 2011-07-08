@@ -17,18 +17,25 @@ function campaignmonitor_admin_settings_lists() {
     array('data' => t('Title'), 'field' => 'title', 'sort' => 'asc'),
     array('data' => t('List ID'), 'field' => 'id'),
     array('data' => t('Subscribed / Unsubscribed'), 'field' => 'status'),
-    array('data' => t('Edit'), 'field' => 'edit'),
+    array('data' => t('Operations'), 'field' => 'Operations'),
   );
 
   $rows = array();
   foreach ($lists as $id => $list) {
+    // Define supported oprations and allow other modules to add more.
+    $operations = array(
+      'Edit' => l(t('Edit'), 'admin/config/services/campaignmonitor/lists/' . $id . '/edit'),
+      'Delete' => l(t('Delete'), 'admin/config/services/campaignmonitor/lists/' . $id . '/delete')
+    );
+    drupal_alter('campaignmonitor_operations', $operations);
+    
     $stats = $cm->getListStats($id);
     $rows[] = array(
       'data' => array(
           $list['name'],
           $id,
           $stats['TotalActiveSubscribers'] . ' / ' . $stats['TotalUnsubscribes'],
-          l(t('Edit'), 'admin/config/services/campaignmonitor/lists/' . $id . '/edit'),
+          implode(' | ', $operations),
         ),
     );
   }
@@ -36,9 +43,9 @@ function campaignmonitor_admin_settings_lists() {
   $html = theme('table',
     array(
 	    'header' => $header,
-	    'rows'=>$rows,
+	    'rows' => $rows,
 	    'sticky' => TRUE,
-	    'empty' => 'There where no lists found...',
+	    'empty' => 'Lists not found or non created yet...',
 	  )
 	);
 
@@ -176,4 +183,42 @@ function campaignmonitor_admin_settings_list_edit_submit($form, &$form_state) {
 
   // Save display options and custom field selection
   system_settings_form_submit($form, $form_state);
+}
+
+function campaignmonitor_admin_settings_list_delete($form, &$form_state, $list_id) {
+  // Get campaign monitor connection.
+  $account = variable_get('campaignmonitor_account', array());
+  $lists = CampaignMonitor::getConnector($account['api_key'], $account['client_id'])->getLists();
+
+  $str = t('You are about to delete the list "@list", which may still have users
+            subscribed to it.<br /><br />This action cannot be undone.',
+          array('@list' => $lists[$list_id]['name']));
+
+  // Build confirmation form.
+  $form['list_id'] = array('#type' => 'hidden', '#value' => $list_id);
+  $form['#submit'][] = 'campaignmonitor_admin_settings_list_delete_submit';
+  $confirm_question = 'Are you sure you want to delete this list ?';
+  return confirm_form($form,
+                    $confirm_question,
+                    'admin/config/services/campaignmonitor/lists', $str,
+                    t('Delete'), t('Cancel'));
+}
+
+function campaignmonitor_admin_settings_list_delete_submit($form, &$form_state) {
+  // Delete list at campaign monitor.
+  $account = variable_get('campaignmonitor_account', array());
+  $cm = CampaignMonitor::getConnector($account['api_key'], $account['client_id']);
+
+  // Delete the list at campaign monitor.
+  $msg = 'The list could not be deleted.';
+  if ($cm->deleteList($form_state['values']['list_id'])) {
+    $msg = 'The list have been deleted.';
+  }
+
+  // Clear blocks cache.
+  _block_rehash();
+
+  // Set message and redirect to list overview.
+  drupal_set_message(t($msg));
+  $form_state['redirect'] = 'admin/config/services/campaignmonitor/lists';
 }
