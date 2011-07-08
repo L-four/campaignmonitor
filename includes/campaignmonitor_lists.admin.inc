@@ -152,14 +152,12 @@ function campaignmonitor_admin_settings_list_edit($form, &$form_state, $listId) 
   // Give the form system feed and look.
   $form = system_settings_form($form);
 
-  // Override system form submit.
-  $form['#submit'] = array('campaignmonitor_admin_settings_list_edit_submit');
-
+  // Add validation function.
+  $form['#validate'][] = 'campaignmonitor_admin_settings_list_edit_validate';
   return $form;
 }
 
-function campaignmonitor_admin_settings_list_edit_submit($form, &$form_state) {
-
+function campaignmonitor_admin_settings_list_edit_validate($form, &$form_state) {
   // Build array with basic information.
   $values = $form_state['values']['campaignmonitor_list_' . $form_state['values']['listId']];
   $options = array(
@@ -175,7 +173,10 @@ function campaignmonitor_admin_settings_list_edit_submit($form, &$form_state) {
 
   // Update the information.
   if (!$cm->updateList($form_state['values']['listId'], $options)) {
-    drupal_set_message(t('The list was not updated correctly at Campaign Monitor.'), 'error');
+    $error = $cm->getLatestError();
+    form_set_error('', $error['message']);
+    drupal_set_message(t('The list options was not updated correctly at Campaign Monitor.'), 'error');
+    return FALSE;
   }
 
   // Remove list options.
@@ -221,7 +222,6 @@ function campaignmonitor_admin_settings_list_delete_submit($form, &$form_state) 
   _block_rehash();
 
   // Set message and redirect to list overview.
-
   $form_state['redirect'] = 'admin/config/services/campaignmonitor/lists';
 }
 
@@ -256,11 +256,12 @@ function campaignmonitor_admin_settings_list_create_form() {
 
   $form = system_settings_form($form);
   $form['#submit'] = array('campaignmonitor_admin_settings_list_create_form_submit');
-  
+  $form['#validate'][] = 'campaignmonitor_admin_settings_list_create_form_validate';
+
   return $form;
 }
 
-function campaignmonitor_admin_settings_list_create_form_submit($form, &$form_state) {
+function campaignmonitor_admin_settings_list_create_form_validate($form, &$form_state) {
   $account = variable_get('campaignmonitor_account', array());
   $cm = CampaignMonitor::getConnector($account['api_key'], $account['client_id']);
   $result = $cm->createList($account['client_id'],
@@ -272,6 +273,12 @@ function campaignmonitor_admin_settings_list_create_form_submit($form, &$form_st
     drupal_set_message('List has been created at Campaign monitor.', 'status');
   }
   else {
-    drupal_set_message('List could not be created at Campaign monitor.', 'error');
+    $error = $cm->getLatestError();
+    form_set_error('listname', $error['message']);
+    return FALSE;
   }
+}
+
+function campaignmonitor_admin_settings_list_create_form_submit($form, &$form_state) {
+  drupal_set_message('List has been created at Campaign monitor.', 'status');  
 }

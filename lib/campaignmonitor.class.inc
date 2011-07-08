@@ -49,13 +49,15 @@ class CampaignMonitor {
     }
   }
 
-  private function addError($type, $message) {
+  private function addError($type, $message, $code = -1) {
     $this->errors[] = array(
       'type' => $type,
-      'message' => $message,
+      'code' => $code,
+      'message' => t($message),
     );
     if ($this->logErrors) {
-      watchdog('campaignmonitor', $message, NULL, $type);
+      $msg = t('Failed with code: @code and message: $msg', array('@code' => $code, '@msg' => $message));
+      watchdog('campaignmonitor', $msg, NULL, $type);
     }
   }
 
@@ -113,6 +115,22 @@ class CampaignMonitor {
     return self::$instance;
   }
 
+  public function getLatestError() {
+    if (!empty($this->errors)) {
+      $last = $this->errors[count($this->errors) - 1];
+      return array(
+        'code' => $last['code'],
+        'message' => $last['message'],
+      );
+    }
+    else {
+      return array(
+        'code' => 1,
+        'message' => t('There dos not seam to been any error detected.')
+      );
+    }
+  }
+
   public function libraryExists() {
     if (file_exists($this->libraryPath)) {
       return TRUE;
@@ -145,7 +163,7 @@ class CampaignMonitor {
             cache_set('campaignmonitor_lists', $this->lists, 'cache');
           }
           else {
-            $this->addError(WATCHDOG_ERROR, t('Failed with code: @code.', array('@code' => $result->http_status_code)));
+            $this->addError(WATCHDOG_ERROR, $result->response->Message, $result->http_status_code);
           }
         }
         else {
@@ -185,7 +203,7 @@ class CampaignMonitor {
           cache_set('campaignmonitor_lists', $this->lists, 'cache');
         }
         else {
-          $this->addError(WATCHDOG_ERROR, t('Failed with code: @code.', array('@code' => $result->http_status_code)));
+          $this->addError(WATCHDOG_ERROR, $result->response->Message, $result->http_status_code);
           return FALSE;
         }
       }
@@ -225,7 +243,7 @@ class CampaignMonitor {
           cache_set('campaignmonitor_lists', $this->lists, 'cache');
         }
         else {
-          $this->addError(WATCHDOG_ERROR, t('Failed with code: @code.', array('@code' => $result->http_status_code)));
+          $this->addError(WATCHDOG_ERROR, $result->response->Message, $result->http_status_code);
         }
       }
       else {
@@ -289,7 +307,7 @@ class CampaignMonitor {
         cache_set('campaignmonitor_lists', $this->lists, 'cache');
         return TRUE;
       } else {
-        $this->addError(WATCHDOG_ERROR, t('Failed with code: @code.', array('@code' => $result->http_status_code)));
+        $this->addError(WATCHDOG_ERROR, $result->response->Message, $result->http_status_code);
       }
     }
     return FALSE;
@@ -324,7 +342,7 @@ class CampaignMonitor {
           cache_set('campaignmonitor_list_stats', $this->listStats, 'cache', $this->getCacheTimeout());
         }
         else {
-          $this->addError(WATCHDOG_ERROR, t('Failed with code: @code.', array('@code' => $result->http_status_code)));
+          $this->addError(WATCHDOG_ERROR, $result->response->Message, $result->http_status_code);
           return FALSE;
         }
       }
@@ -345,7 +363,7 @@ class CampaignMonitor {
         return TRUE;
       }
       else {
-        $this->addError(WATCHDOG_ERROR, t('Failed with code: @code.', array('@code' => $result->http_status_code)));
+        $this->addError(WATCHDOG_ERROR, $result->response->Message, $result->http_status_code);
         return FALSE;
       }
     }
@@ -365,7 +383,7 @@ class CampaignMonitor {
         return TRUE;
       }
       else {
-        $this->addError(WATCHDOG_ERROR, t('Failed with code: @code.', array('@code' => $result->http_status_code)));
+        $this->addError(WATCHDOG_ERROR, $result->response->Message, $result->http_status_code);
         return FALSE;
       }
     }
@@ -396,7 +414,7 @@ class CampaignMonitor {
             cache_set('campaignmonitor_campaigns', $this->campaigns, 'cache', $this->getCacheTimeout());
           }
           else {
-            $this->addError(WATCHDOG_ERROR, t('Failed with code: @code.', array('@code' => $result->http_status_code)));
+            $this->addError(WATCHDOG_ERROR, $result->response->Message, $result->http_status_code);
             return FALSE;
           }
         }
@@ -448,7 +466,7 @@ class CampaignMonitor {
           cache_set('campaignmonitor_subscribers', $this->subscribers, 'cache', $this->getCacheTimeout());
         }
         else {
-          $this->addError(WATCHDOG_ERROR, t('Failed with code: @code.', array('@code' => $result->http_status_code)));
+          $this->addError(WATCHDOG_ERROR, $result->response->Message, $result->http_status_code);
           return array();
         }
       }
@@ -479,7 +497,7 @@ class CampaignMonitor {
           'Resubscribe' => true,
       ));
       if (!$result->was_successful()) {
-        $this->addError(WATCHDOG_ERROR, t('Failed with code: @code.', array('@code' => $result->http_status_code)));
+        $this->addError(WATCHDOG_ERROR, $result->response->Message, $result->http_status_code);
         return FALSE;
       }
       return TRUE;
@@ -491,7 +509,7 @@ class CampaignMonitor {
     if ($obj = $this->createSubscriberObj($listId)) {
       $result = $obj->unsubscribe($email);
       if (!$result->was_successful()) {
-        $this->addError(WATCHDOG_ERROR, t('Failed with code: @code.', array('@code' => $result->http_status_code)));
+        $this->addError(WATCHDOG_ERROR, $result->response->Message, $result->http_status_code);
         return FALSE;
       }
       return TRUE;
