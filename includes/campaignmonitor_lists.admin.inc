@@ -1,8 +1,6 @@
 <?php
 
 function campaignmonitor_admin_settings_lists() {
-  $form = array('#tree' => TRUE);
-
   $account = variable_get('campaignmonitor_account', FALSE);
   if (!$account) {
     drupal_set_message(t('You have not entered your account information yet, henc lists from Campaign Monitor can not be downloaded.'), 'error');
@@ -40,7 +38,8 @@ function campaignmonitor_admin_settings_lists() {
     );
   }
 
-  $html = theme('table',
+  $html = '<p class="campaignmonitor-action-links">' . l('Add list', 'admin/config/services/campaignmonitor/lists/add') . '</p>';
+  $html .= theme('table',
     array(
 	    'header' => $header,
 	    'rows' => $rows,
@@ -51,6 +50,9 @@ function campaignmonitor_admin_settings_lists() {
 
 	//Append pager
 	$html .= theme('pager', array('tags' => array()));
+
+  // Give it some styling.
+  drupal_add_css(drupal_get_path('module', 'campaignmonitor') . '/css/campaignmonitor.admin.css');
 
 	return ($html);
 }

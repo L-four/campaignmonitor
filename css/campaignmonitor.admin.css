@@ -1,0 +1,8 @@
+.campaignmonitor-action-links {
+  padding-left: 20px;
+}
+
+.campaignmonitor-action-links a {
+  background: url("../images/add.png") no-repeat scroll 0 center transparent;
+  padding-left: 15px
+}
