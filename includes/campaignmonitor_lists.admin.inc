@@ -38,8 +38,7 @@ function campaignmonitor_admin_settings_lists() {
     );
   }
 
-  $html = '<p class="campaignmonitor-action-links">' . l('Add list', 'admin/config/services/campaignmonitor/lists/add') . '</p>';
-  $html .= theme('table',
+  $html = theme('table',
     array(
 	    'header' => $header,
 	    'rows' => $rows,
