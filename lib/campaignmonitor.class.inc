@@ -1,7 +1,30 @@
 <?php
 
+/**
+ * @file
+ * Implementation of the CampaignMonitor class, which is a wrapper class for
+ * Campaign Monitor v3 API. It's implemented as a Singleton class and instances
+ * are creted usign the account variables and the statuc function getConnector()
+ * e.g.
+ * 
+ * $account = variable_get('campaignmonitor_account', array());
+ * $cm = CampaignMonitor::getConnector($account['api_key'], $account['client_id']);
+ *
+ * If the class encounters any error in the communication with the Campaign
+ * Monitor servers, then the last error can be extracted with getLatestError()
+ * function e.g.
+ *
+ * if (!$cm->unsubscribe($listId, $email)) {
+ *   $error = $cm->getLatestError();
+ *   form_set_error('', $error['message']);
+ * }
+ *
+ * This class is written by Jesper Kristensen (cableman@linuxdev.dk).
+ */
+
 class CampaignMonitor {
 
+  // Used to load the different library parts of the API.
   const CampaignMonitorCLIENT = 'csrest_clients.php';
   const CampaignMonitorLIST = 'csrest_lists.php';
   const CampaignMonitorSubscribers = 'csrest_subscribers.php';
@@ -15,11 +38,13 @@ class CampaignMonitor {
   private $logErrors = FALSE;
   private $errors = array();
 
+  // These variables are used as static cache for the object.
   private $lists = array();
   private $listStats = array();
   private $campaigns = array();
   private $subscribers = array();
 
+  // Holds the object instance (part of the singleton pattern).
   private static $instance;
 
   /**
@@ -43,12 +68,19 @@ class CampaignMonitor {
       $this->libraryPath = drupal_get_path('module', 'campaignmonitor') . '/lib/createsend-php/';
     }
 
-    // Enable disable logging.
+    // Enable logging ?.
     if (isset($setting['logging'])) {
       $this->logErrors = $setting['logging'];
     }
   }
 
+  /**
+   * Add an error the the local stack and call watchdog, if logging is enabled.
+   *
+   * @param string $type drupal watchdog const. error type
+   * @param string $message
+   * @param int $code normally the http response code
+   */
   private function addError($type, $message, $code = -1) {
     $this->errors[] = array(
       'type' => $type,
@@ -61,6 +93,13 @@ class CampaignMonitor {
     }
   }
 
+  /**
+   * Helper function that loads the part of the API defined in the $file
+   * variable. This function is mostly used by create[xxx]Obj functions below.
+   *
+   * @param string $file the name of the API file to include
+   * @return boolean TRUE of success else FALSE
+   */
   private function libraryLoad($file) {
     if ($this->libraryExists()) {
       @require_once $this->libraryPath . $file;
@@ -70,6 +109,11 @@ class CampaignMonitor {
     return FALSE;
   }
 
+  /**
+   * Create API client object.
+   *
+   * @return CS_REST_Clients campaign monitor client object or FALSE
+   */
   private function createClientObj() {
     if ($this->libraryLoad(self::CampaignMonitorCLIENT)) {
       return new CS_REST_Clients($this->client_id, $this->api_key);
@@ -78,6 +122,12 @@ class CampaignMonitor {
     return FALSE;
   }
 
+  /**
+   * Create API list object.
+   *
+   * @param string $listId campaign monitor list id
+   * @return CS_REST_Lists campaign monitor list object or FALSE
+   */
   private function createListObj($listId) {
     if ($this->libraryLoad(self::CampaignMonitorLIST)) {
       return new CS_REST_Lists($listId, $this->api_key);
@@ -86,6 +136,12 @@ class CampaignMonitor {
     return FALSE;
   }
 
+  /**
+   * Create API subscribers object.
+   *
+   * @param type $listId campaign monitor list id
+   * @return CS_REST_Subscribers campaign monitor subscriber object or FALSE
+   */
   private function createSubscriberObj($listId) {
     if ($this->libraryLoad(self::CampaignMonitorSubscribers)) {
       return new CS_REST_Subscribers($listId, $this->api_key);
@@ -94,13 +150,26 @@ class CampaignMonitor {
     return FALSE;
   }
 
+  /**
+   * Create an unix timestamp based on the cache timeout set in the administration
+   * interface.
+   *
+   * @return Unix timestamp
+   */
   private function getCacheTimeout() {
     $options = variable_get('campaignmonitor_general', array());
     return time() + (isset($options['cache_timeout']) ? $options['cache_timeout'] : '360');
   }
 
   /**
-   * Implements a singleton pattern that returns a instance of this object.
+   * Implements a singleton pattern that returns a instance of this object. The
+   * function requires campaign monitor account keys to create the connection.
+   * These keys can be found at the campaign monitor homepage and should be
+   * entered in the administration interface and the object can be create like
+   * below.
+   *
+   * $account = variable_get('campaignmonitor_account', array());
+   * $cm = CampaignMonitor::getConnector($account['api_key'], $account['client_id']);
    *
    * @param string $api_key
    * @param string $client_key
@@ -115,6 +184,12 @@ class CampaignMonitor {
     return self::$instance;
   }
 
+  /**
+   * Returns the lastest error from the stack of possible errors encountered 
+   * during communication with campaign monitor servers.
+   *
+   * @return array with an error code and message.
+   */
   public function getLatestError() {
     if (!empty($this->errors)) {
       $last = $this->errors[count($this->errors) - 1];
@@ -126,11 +201,16 @@ class CampaignMonitor {
     else {
       return array(
         'code' => 1,
-        'message' => t('There dos not seam to been any error detected.')
+        'message' => t('There dos not seam to been any errors.')
       );
     }
   }
 
+  /**
+   * Helper function that checks if the library path given exists.
+   *
+   * @return boolean if the library exists TRUE is retuerned else FALSE
+   */
   public function libraryExists() {
     if (file_exists($this->libraryPath)) {
       return TRUE;
@@ -138,6 +218,17 @@ class CampaignMonitor {
     return FALSE;
   }
 
+  /**
+   * Returns the internal error array with the format below.
+   *
+   * $errors[] = array(
+   *   'type' => [watchdog error type],
+   *   'code' => [error code],
+   *   'message' => [message],
+   * );
+   *
+   * @return array of errors or FALSE if the array is empty
+   */
   public function getErrors() {
     if (count($this->errors)) {
       return $this->errors;
@@ -145,6 +236,29 @@ class CampaignMonitor {
     return FALSE;
   }
 
+  /**
+   * Reset the internal error array to the empty array.
+   */
+  public function resetErrors() {
+    $this->errors = array();
+  }
+
+  /**
+   * Gets all list from campaign monitor found under the client id given during
+   * object creation. The list is returned as a keyed array and cached in the
+   * cache table, so it may not always return the newest information.
+   *
+   * The array has the format below, be aware that the same cache is used be the
+   * functions getListDetails and getCustomFields. This means that the information
+   * returned by this function may contain extend list information, if any of
+   * these functions have been called.
+   *
+   * $list[$id] = array(
+   *  'name' => 'List name',
+   * );
+   *
+   * @return array of lists avaliable from campaign monitor
+   */
   public function getLists() {
     if (empty($this->lists)) {
       if (($cache = cache_get('campaignmonitor_lists')) && !empty($cache->data)) {
@@ -152,6 +266,8 @@ class CampaignMonitor {
         $this->lists = $cache->data;
       }
       else {
+        // Create list object and get the lists, the lists are saved in the local
+        // cache.
         if ($obj = $this->createClientObj()) {
           $result = $obj->get_lists();
           if ($result->was_successful()) {
@@ -175,6 +291,11 @@ class CampaignMonitor {
     return $this->lists;
   }
 
+  /**
+   *
+   * @param type $listId
+   * @return type 
+   */
   public function getListDetails($listId) {    
     // If lists have not been loaded yet, get them as they build the basic cache.
     if (empty($this->lists)) {
