@@ -257,7 +257,7 @@ class CampaignMonitor {
    *  'name' => 'List name',
    * );
    *
-   * @return array of lists avaliable from campaign monitor
+   * @return array of lists avaliable from campaign monitor or FALSE on failure
    */
   public function getLists() {
     if (empty($this->lists)) {
@@ -292,9 +292,12 @@ class CampaignMonitor {
   }
 
   /**
+   * Gets list details from camapign monitor, the information is cached locally
+   * and may be out-dated. It fetches the unsubscribe link, confirmation success
+   * page and confirmed opt in options.
    *
-   * @param type $listId
-   * @return type 
+   * @param string $listId campaign monitor list id
+   * @return array with the information or FALSE on failure
    */
   public function getListDetails($listId) {    
     // If lists have not been loaded yet, get them as they build the basic cache.
@@ -308,11 +311,13 @@ class CampaignMonitor {
       return FALSE;
     }
 
+    // If list details is not set, create list object and fetch the information
+    // from campaign monitor servers.
     if (!isset($this->lists[$listId]['details'])) {
       if ($obj = $this->createListObj($listId)) {
         $result = $obj->get();
         if ($result->was_successful()) {
-          // Save details about this list.
+          // Convert the return objec into a keyed array.
           $this->lists[$listId]['details'] = array();
           foreach ($result->response as $key => $value) {
             if (!in_array($key, array('ListID', 'Title'))) {
@@ -320,7 +325,7 @@ class CampaignMonitor {
             }
           }
 
-          // Update cache with list details.
+          // Update the cache with list details.
           cache_set('campaignmonitor_lists', $this->lists, 'cache');
         }
         else {
@@ -336,6 +341,14 @@ class CampaignMonitor {
     return $this->lists[$listId]['details'];
   }
 
+  /**
+   * Fetch costum fields for a given list, then information is stored locally in
+   * the list cache. The information is stored as an keyed array on the list
+   * arrary under "CustomFields" key.
+   *
+   * @param string $listId
+   * @return array with the information or FALSE on failure
+   */
   public function getCustomFields($listId) {
     // If lists have not been loaded yet, get them as they build the basic cache.
     if (empty($this->lists)) {
@@ -348,11 +361,12 @@ class CampaignMonitor {
       return FALSE;
     }
 
+    // If custom field are not set on the list, then create list object and
+    // fetch custom field into a keyed array.
     if (!isset($this->lists[$listId]['CustomFields'])) {
       if ($obj = $this->createListObj($listId)) {
         $result = $obj->get_custom_fields();
         if ($result->was_successful()) {
-          // Save custom field about this list.
           $this->lists[$listId]['CustomFields'] = array();
           foreach ($result->response as $field) {
             foreach ($field as $name => $details) {
@@ -375,6 +389,14 @@ class CampaignMonitor {
     return $this->lists[$listId]['CustomFields'];
   }
 
+  /**
+   * Get all information avaliable about a given list. This is done by calling
+   * getLists(), getListDetails() and getCustomFields(), henc building the
+   * local list cache.
+   *
+   * @param string $listId unique list id
+   * @return array with list information or FALSE on failure
+   */
   public function getExtendedList($listId) {
     // If lists have not been loaded yet, get them as they build the basic cache.
     if (empty($this->lists)) {
@@ -398,12 +420,13 @@ class CampaignMonitor {
   }
 
   /**
-   * Update remote list information. The $options array should have the fields:
-   * Title, UnsubscribePage, ConfirmedOptIn and ConfirmationSuccessPage.
+   * Update remote list information. The options array should have the fields:
+   * Title, UnsubscribePage, ConfirmedOptIn and ConfirmationSuccessPage. If you
+   * do not wich to set these used the empty string.
    *
-   * @param type $listId
-   * @param type $options
-   * @return type
+   * @param string $listId unique list id
+   * @param array $options with information to update
+   * @return boolean TRUE on success else FALSE
    */
   public function updateList($listId, $options = array()) {
     // Make sure that list is loaded.
@@ -434,6 +457,14 @@ class CampaignMonitor {
     return FALSE;
   }
 
+  /**
+   * Fetch stats about a given list, which includes number of subscribers and
+   * unsubscribers. The information is temporally store locally in the cache. The
+   *  default timeout is 360 seconds.
+   *
+   * @param string $listId unique list id
+   * @return array with stats or FALSE on failure
+   */
   public function getListStats($listId) {
     $fetch = FALSE;
     if (!isset($this->listStats[$listId])) {
@@ -475,6 +506,13 @@ class CampaignMonitor {
     return $this->listStats[$listId];
   }
 
+  /**
+   * Delete a list from campaign monitor, this action can not be reverted. The
+   * list is also removed from the local cache.
+   *
+   * @param type $listId unique list id
+   * @return boolean TRUE on success else FALSE
+   */
   public function deleteList($listId) {
     if ($obj = $this->createListObj($listId)) {
       $result = $obj->delete();
@@ -491,6 +529,17 @@ class CampaignMonitor {
     return FALSE;
   }
 
+  /**
+   * Create a new list at the campaign monitor servers. The side-effect is that
+   * the local cache is cleared.
+   *
+   * @param string $client_id client id
+   * @param string $title
+   * @param string $unsubscribePage optional
+   * @param boolean $confirmedOptIn optional
+   * @param string $confirmationSuccessPage optional
+   * @return boolean TRUE on success else FALSE
+   */
   public function createList($client_id, $title, $unsubscribePage = '', $confirmedOptIn = FALSE, $confirmationSuccessPage = '') {
     if ($obj = $this->createListObj(NULL)) {
       $result = $obj->create($client_id, array(
@@ -500,6 +549,7 @@ class CampaignMonitor {
         'ConfirmationSuccessPage' => check_plain($confirmationSuccessPage),
       ));
       if ($result->was_successful()) {
+        // Clear the cache, so list informations can be retrived again.
         $this->clearCache();
         return TRUE;
       }
@@ -511,6 +561,21 @@ class CampaignMonitor {
     return FALSE;
   }
 
+  /**
+   * Get basic information about campaigns in the form of a keyed array. The
+   * information is store locally in a temporally cache. The array is formatted
+   * as below.
+   * 
+   * $campaigns[$id] => array(
+   *   'Name' => 'Campaign Name',
+   *   'Subject' => 'Campaign subject line',
+   *   'Sent' => 'Unix timestamp',
+   *   'Recipients' => 'The number of recipients',
+   *   'Link' => 'Online URL to the campaign',
+   * );
+   *
+   * @return array with the campaigns or FALSE on failure
+   */
   public function getCampaigns() {
     if (empty($this->campaigns)) {
       if (($cache = cache_get('campaignmonitor_campaigns')) && !empty($cache->data)) {
@@ -547,8 +612,15 @@ class CampaignMonitor {
     return $this->campaigns;
   }
 
-
-  public function getSubscriber($listId, $email, $reset = FALSE) {
+  /**
+   * Get values entered by the subscriber, when she/he subscribed to a given
+   * list.
+   *
+   * @param string $listId unique list id
+   * @param string $email e-mail address to identify the subscriber
+   * @return array with subscriber information or FALSE on failure
+   */
+  public function getSubscriber($listId, $email) {
     $fetch = FALSE;
     if (!isset($this->subscribers[$listId . $email])) {
       // Not found inside objec, try cache.
@@ -599,7 +671,15 @@ class CampaignMonitor {
     return $this->subscribers[$listId . $email];
   }
 
-  public function isSubscribed($listId, $email, $reset = FALSE) {
+  /**
+   * Check if a given user, identifyed by e-mail address, is subscribed to a
+   * given list.
+   *
+   * @param string $listId unique list id
+   * @param string $email
+   * @return boolean TRUE if subscribed else FALSE
+   */
+  public function isSubscribed($listId, $email) {
     $result = $this->getSubscriber($listId, $email, $reset);
     if (!empty($result)) {
       if ($result['State'] == 'Active') {
@@ -609,7 +689,18 @@ class CampaignMonitor {
     return FALSE;
   }
 
-  public function subscribe($listId, $name, $email, $customFields = array()) {
+  /**
+   * Subscribe a user to a given list, with information entered. If the user is
+   * already subscribed to the list, her/his informations are updated with the
+   * new values.
+   *
+   * @param string $listId unique list id
+   * @param string $email e-mail address that identifies the user
+   * @param string $name optional
+   * @param array $customFields optional
+   * @return boolean TRUE on success else FALSE
+   */
+  public function subscribe($listId, $email, $name = '', $customFields = array()) {
     if ($obj = $this->createSubscriberObj($listId)) {
       $result = $obj->add(array(
           'EmailAddress' => $email,
@@ -626,6 +717,13 @@ class CampaignMonitor {
     return FALSE;
   }
 
+  /**
+   * Unsubscribe a gien user, identified by e-mail address, from a given list.
+   *
+   * @param string $listId unique list id
+   * @param string $email
+   * @return boolean TRUE on success else FALSE
+   */
   public function unsubscribe($listId, $email) {
     if ($obj = $this->createSubscriberObj($listId)) {
       $result = $obj->unsubscribe($email);
@@ -638,6 +736,9 @@ class CampaignMonitor {
     return FALSE;
   }
 
+  /**
+   * Clears all the caches used by this wrapper object.
+   */
   public function clearCache() {    
     cache_clear_all('campaignmonitor_lists', 'cache');
     cache_clear_all('campaignmonitor_list_stats', 'cache');

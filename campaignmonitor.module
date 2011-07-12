@@ -352,10 +352,10 @@ function campaignmonitor_subscribe_form_validate($form, &$form_state) {
   }
 
   $list_id = $form_state['values']['list_id'];
-  $name = check_plain($form_state['values']['name']);
+  $name = isset($form_state['values']['name']) ? check_plain($form_state['values']['name']) : '';
   $email = check_plain($form_state['values']['email']);
 
-  if (!$cm->subscribe($list_id, $name, $email, $custom_fields)) {
+  if (!$cm->subscribe($list_id, $email, $name, $custom_fields)) {
     form_set_error('', t('You where not subscribed to the list, please try again later.'));
     return FALSE;
   }
