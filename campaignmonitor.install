@@ -2,16 +2,17 @@
 
 /*
  * @file
- * Handles the installtion, uninstall and update functions for the module.
+ * Handles the uninstall and update functions for the module.
  */
 
+/**
+ * Uninstall the variables used by the module.
+ */
 function campaignmonitor_uninstall() {
-  variable_del('campaignmonitor_userpagedisplaytext');
-  variable_del('campaignmonitor_checkboxdisplaytext');
-  variable_del('campaignmonitor_client_id');
-  variable_del('campaignmonitor_lists');
-  variable_del('campaignmonitor_display_on');
-  variable_del('campaignmonitor_api_key');
-  variable_del('campaignmonitor_pastcampaignurl');
-  variable_del('campaignmonitor_connection_timeout');
+  // Delete all lists.
+  db_delete('variable')
+    ->condition('name', 'campaignmonitor_list_', 'LIKE')
+    ->execute();
+  variable_del('campaignmonitor_account');
+  variable_del('campaignmonitor_general');
 }

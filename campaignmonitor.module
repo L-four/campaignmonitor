@@ -322,6 +322,11 @@ function campaignmonitor_subscribe_form($form, &$form_state, $list_id, $account)
   return $form;
 }
 
+/**
+ * Subscribe form validation handler, which calls the API. It's done in the
+ * validation handler to provide better user feedback on failure.
+ *
+ */
 function campaignmonitor_subscribe_form_validate($form, &$form_state) {
   // Get a campaign monitor object.
   $account = variable_get('campaignmonitor_account', FALSE);

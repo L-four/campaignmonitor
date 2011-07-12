@@ -5,7 +5,12 @@
  * Implementation of the administration interface for the module.
  */
 
-
+/**
+ * Creates the settings form for campaign monitor. It's located under the
+ * general tab.
+ *
+ * @return array $form
+ */
 function campaignmonitor_admin_settings_general() {
   // Get account details.
   $account = variable_get('campaignmonitor_account', array());
@@ -53,7 +58,6 @@ function campaignmonitor_admin_settings_general() {
       '#default_value' => isset($defaults['cache_timeout']) ? $defaults['cache_timeout'] : '360',
     );
 
-
     $path = drupal_get_path('module', 'campaignmonitor') . '/lib/createsend-php/';
     $form['campaignmonitor_general']['library_path'] = array(
       '#type' => 'textfield',
@@ -76,6 +80,7 @@ function campaignmonitor_admin_settings_general() {
       '#default_value' => isset($defaults['logging']) ? $defaults['logging'] : 0,
     );
 
+    // Add cache clear button.
     $form['clear_cache'] = array(
       '#type' => 'fieldset',
       '#title' => t('Clear cached data'),
@@ -95,6 +100,13 @@ function campaignmonitor_admin_settings_general() {
   return $form;
 }
 
+/**
+ * Settings submit form handler, which takes care off rehasing the block table
+ * to ensure that blocks are avaliable after campign monitor activation.
+ *
+ * @param array $form
+ * @param array $form_state
+ */
 function campaignmonitor_admin_settings_general_submit($form, &$form_state) {
   // If archive block have been selected, rehash the block cache.
   if ($form_state['values']['campaignmonitor_general']['archive']) {

@@ -1,5 +1,17 @@
 <?php
 
+/**
+ * @file
+ * Implements the list administration interface, which can be used to manage the
+ * different campaign monitor lists.
+ */
+
+/**
+ * Builds an overview table, with basic information about the list and adds
+ * actions links that can be used to update/delete lists.
+ *
+ * @return string $html
+ */
 function campaignmonitor_admin_settings_lists() {
   $account = variable_get('campaignmonitor_account', FALSE);
   if (!$account) {
@@ -38,6 +50,7 @@ function campaignmonitor_admin_settings_lists() {
     );
   }
 
+  // Theme the information as a table.
   $html = theme('table',
     array(
 	    'header' => $header,
@@ -47,7 +60,7 @@ function campaignmonitor_admin_settings_lists() {
 	  )
 	);
 
-	//Append pager
+	// Add a pager to the table, for those sites with really many lists.
 	$html .= theme('pager', array('tags' => array()));
 
   // Give it some styling.
@@ -56,6 +69,14 @@ function campaignmonitor_admin_settings_lists() {
 	return ($html);
 }
 
+/**
+ * List edit callback that returns a form with information about a given list.
+ *
+ * @param array $form
+ * @param array $form_state
+ * @param string $listId unique list id
+ * @return array $form
+ */
 function campaignmonitor_admin_settings_list_edit($form, &$form_state, $listId) {
   $form =  array('#tree' => TRUE);
 
@@ -108,7 +129,6 @@ function campaignmonitor_admin_settings_list_edit($form, &$form_state, $listId) 
   $form[$form_key]['options']['ConfirmedOptIn'] = array(
     '#type' => 'checkbox',
     '#title' => t('Confirmed Opt In'),
-    //'#options' => array('1'),
     '#default_value' => $list['details']['ConfirmedOptIn'],
   );
   
@@ -126,7 +146,7 @@ function campaignmonitor_admin_settings_list_edit($form, &$form_state, $listId) 
     '#default_value' => isset($defaults['display']['name']) ? $defaults['display']['name'] : 0,
   );
 
-  // List costom fields
+  // List custom fields.
   if (!empty($list['CustomFields'])) {
       $options = array();
       foreach ($list['CustomFields'] as $key => $value) {
@@ -158,6 +178,16 @@ function campaignmonitor_admin_settings_list_edit($form, &$form_state, $listId) 
   return $form;
 }
 
+/**
+ * Edit form validation function, which calls the API to save information
+ * entered. This is done in the validation function, to be able to give better
+ * feedback to the user and to prevent the user for entering the information
+ * once more on failure.
+ *
+ * @param array $form
+ * @param array $form_state
+ * @return boolean FALSE on failure, to prevent submission.
+ */
 function campaignmonitor_admin_settings_list_edit_validate($form, &$form_state) {
   // Build array with basic information.
   $values = $form_state['values']['campaignmonitor_list_' . $form_state['values']['listId']];
@@ -187,6 +217,14 @@ function campaignmonitor_admin_settings_list_edit_validate($form, &$form_state) 
   system_settings_form_submit($form, $form_state);
 }
 
+/**
+ * List deletion comfirmation callback.
+ *
+ * @param array $form
+ * @param array $form_state
+ * @param string $list_id unique list id
+ * @return confirmation form
+ */
 function campaignmonitor_admin_settings_list_delete($form, &$form_state, $list_id) {
   // Get campaign monitor connection.
   $account = variable_get('campaignmonitor_account', array());
@@ -206,6 +244,12 @@ function campaignmonitor_admin_settings_list_delete($form, &$form_state, $list_i
                     t('Delete'), t('Cancel'));
 }
 
+/**
+ * Comfirmation form delete callback.
+ *
+ * @param array $form
+ * @param array $form_state
+ */
 function campaignmonitor_admin_settings_list_delete_submit($form, &$form_state) {
   // Delete list at campaign monitor.
   $account = variable_get('campaignmonitor_account', array());
@@ -226,7 +270,11 @@ function campaignmonitor_admin_settings_list_delete_submit($form, &$form_state) 
   $form_state['redirect'] = 'admin/config/services/campaignmonitor/lists';
 }
 
-
+/**
+ * Build list creation form, which is used to create new lists.
+ *
+ * @return array $form
+ */
 function campaignmonitor_admin_settings_list_create_form() {
   $form = array();
 
@@ -262,6 +310,14 @@ function campaignmonitor_admin_settings_list_create_form() {
   return $form;
 }
 
+/**
+ * Create list validation form, which calls the API to create the list. It's done
+ * here to ensure better user feedback on failure.
+ *
+ * @param array $form
+ * @param array $form_state
+ * @return boolean FALSE on failure
+ */
 function campaignmonitor_admin_settings_list_create_form_validate($form, &$form_state) {
   $account = variable_get('campaignmonitor_account', array());
   $cm = CampaignMonitor::getConnector($account['api_key'], $account['client_id']);
@@ -277,6 +333,15 @@ function campaignmonitor_admin_settings_list_create_form_validate($form, &$form_
   }
 }
 
+/**
+ * List creation submit function, used to set a positive feedback message and
+ * rehashs the block table, to ensure that the new list subscribe block is
+ * avaliable.
+ *
+ * @param array $form
+ * @param array $form_state
+ */
 function campaignmonitor_admin_settings_list_create_form_submit($form, &$form_state) {
+  _block_rehash();
   drupal_set_message('List has been created at Campaign monitor.', 'status');  
 }
