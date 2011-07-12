@@ -38,7 +38,7 @@ function campaignmonitor_admin_settings_lists() {
       'Delete' => l(t('Delete'), 'admin/config/services/campaignmonitor/lists/' . $id . '/delete')
     );
     drupal_alter('campaignmonitor_operations', $operations);
-    
+
     $stats = $cm->getListStats($id);
     $rows[] = array(
       'data' => array(
@@ -53,20 +53,20 @@ function campaignmonitor_admin_settings_lists() {
   // Theme the information as a table.
   $html = theme('table',
     array(
-	    'header' => $header,
-	    'rows' => $rows,
-	    'sticky' => TRUE,
-	    'empty' => 'Lists not found or non created yet...',
-	  )
-	);
+      'header' => $header,
+      'rows' => $rows,
+      'sticky' => TRUE,
+      'empty' => 'Lists not found or non created yet...',
+    )
+  );
 
-	// Add a pager to the table, for those sites with really many lists.
-	$html .= theme('pager', array('tags' => array()));
+  // Add a pager to the table, for those sites with really many lists.
+  $html .= theme('pager', array('tags' => array()));
 
   // Give it some styling.
   drupal_add_css(drupal_get_path('module', 'campaignmonitor') . '/css/campaignmonitor.admin.css');
 
-	return ($html);
+  return ($html);
 }
 
 /**
@@ -74,10 +74,10 @@ function campaignmonitor_admin_settings_lists() {
  *
  * @param array $form
  * @param array $form_state
- * @param string $listId unique list id
+ * @param string $list_id unique list id
  * @return array $form
  */
-function campaignmonitor_admin_settings_list_edit($form, &$form_state, $listId) {
+function campaignmonitor_admin_settings_list_edit($form, &$form_state, $list_id) {
   $form =  array('#tree' => TRUE);
 
   // Get campaign monitor connection.
@@ -85,20 +85,20 @@ function campaignmonitor_admin_settings_list_edit($form, &$form_state, $listId) 
   $cm = CampaignMonitor::getConnector($account['api_key'], $account['client_id']);
 
   // Load extended information about the list.
-  $list = $cm->getExtendedList($listId);
+  $list = $cm->getExtendedList($list_id);
 
   // Add list id to the form.
   $form['listId'] = array(
     '#type' => 'hidden',
-    '#value' => $listId,
+    '#value' => $list_id,
   );
 
   // Set this form name (index).
-  $form_key = 'campaignmonitor_list_' . $listId;
+  $form_key = 'campaignmonitor_list_' . $list_id;
 
   // Get previouse save list information.
   $defaults = variable_get($form_key, array());
-  
+
   $form[$form_key]['options'] = array(
     '#type' => 'fieldset',
     '#title' => t('List options'),
@@ -131,7 +131,7 @@ function campaignmonitor_admin_settings_list_edit($form, &$form_state, $listId) 
     '#title' => t('Confirmed Opt In'),
     '#default_value' => $list['details']['ConfirmedOptIn'],
   );
-  
+
   $form[$form_key]['display'] = array(
     '#type' => 'fieldset',
     '#title' => t('Display options'),
@@ -169,7 +169,7 @@ function campaignmonitor_admin_settings_list_edit($form, &$form_state, $listId) 
       '#default_value' => isset($defaults['CustomFields']['selected']) ? $defaults['CustomFields']['selected'] : array(),
     );
   }
-  
+
   // Give the form system feed and look.
   $form = system_settings_form($form);
 
@@ -300,7 +300,7 @@ function campaignmonitor_admin_settings_list_create_form() {
   $form['ConfirmedOptIn'] = array(
     '#type' => 'checkbox',
     '#title' => t('Confirmed Opt In'),
-    '#default_value' => false,
+    '#default_value' => FALSE,
   );
 
   $form = system_settings_form($form);
@@ -343,5 +343,5 @@ function campaignmonitor_admin_settings_list_create_form_validate($form, &$form_
  */
 function campaignmonitor_admin_settings_list_create_form_submit($form, &$form_state) {
   _block_rehash();
-  drupal_set_message('List has been created at Campaign monitor.', 'status');  
+  drupal_set_message(t('List has been created at Campaign monitor.'), 'status');
 }

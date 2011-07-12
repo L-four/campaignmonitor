@@ -4,15 +4,12 @@
  * @file
  * Module that plugs in Campaign Monitor functionality to your Drupal web site.
  * For Campaign Monitor information see: http://www.campaignmonitor.com/
- *
- * This module uses the CampaignMonitor PHP API. For all credit and information
- * about this PHP API see By ssherriff: http://code.google.com/p/campaignmonitor-php/
  */
 
 define('CAMPAIGNMONITOR_ARCHIVE_DELTA', 'HASHc32bde51684d37a36679301a1e9');
 
 /**
- * Implementation of hook_help().
+ * Implements hook_help().
  */
 function campaignmonitor_help($path, $arg) {
   switch ($path) {
@@ -22,7 +19,7 @@ function campaignmonitor_help($path, $arg) {
 }
 
 /**
- * Implementation of hook_perm().
+ * Implements hook_perm().
  */
 function campaignmonitor_permission() {
   return array(
@@ -42,7 +39,7 @@ function campaignmonitor_permission() {
 }
 
 /**
- * Implementation of hook_menu().
+ * Implements hook_menu().
  */
 function campaignmonitor_menu() {
   $items = array();
@@ -175,7 +172,7 @@ function campaignmonitor_block_view($delta) {
     $block['content'] = drupal_get_form('campaignmonitor_subscribe_form', $delta, $account);
 
     // Add some basic styling of form elements.
-    drupal_add_css(drupal_get_path('module', 'campaignmonitor'). '/css/campaignmonitor.theme.css');
+    drupal_add_css(drupal_get_path('module', 'campaignmonitor') . '/css/campaignmonitor.theme.css');
   }
 
   return $block;
@@ -249,7 +246,7 @@ function campaignmonitor_subscribe_form($form, &$form_state, $list_id, $account)
       case 'Text':
         $form['CustomFields'][$form_key] = array(
           '#type' => 'textfield',
-          '#title' => t($field['FieldName']),
+          '#title' => check_plain($field['FieldName']),
           '#maxlength' => 200,
           '#default_value' => isset($subscriber['CustomFields']) ? $subscriber['CustomFields'][$field['FieldName']] : '',
         );
@@ -260,10 +257,10 @@ function campaignmonitor_subscribe_form($form, &$form_state, $list_id, $account)
         foreach ($field['FieldOptions'] as $option) {
           $options[$option] = $option;
         }
-        
+
         $form['CustomFields'][$form_key] = array(
           '#type' => 'select',
-          '#title' => t($field['FieldName']),
+          '#title' => check_plain($field['FieldName']),
           '#options' => $options,
           '#default_value' => isset($subscriber['CustomFields']) ? $subscriber['CustomFields'][$field['FieldName']] : '',
         );
@@ -295,7 +292,7 @@ function campaignmonitor_subscribe_form($form, &$form_state, $list_id, $account)
 
         $form['CustomFields'][$form_key] = array(
           '#type' => 'checkboxes',
-          '#title' => t($field['FieldName']),
+          '#title' => check_plain($field['FieldName']),
           '#options' => $options,
           '#default_value' => $default,
         );
@@ -304,7 +301,7 @@ function campaignmonitor_subscribe_form($form, &$form_state, $list_id, $account)
       case 'Number':
         $form['CustomFields'][$form_key] = array(
           '#type' => 'textfield',
-          '#title' => t($field['FieldName']),
+          '#title' => check_plain($field['FieldName']),
           '#default_value' => isset($subscriber['CustomFields']) ? $subscriber['CustomFields'][$field['FieldName']] : '',
         );
         break;
@@ -316,7 +313,10 @@ function campaignmonitor_subscribe_form($form, &$form_state, $list_id, $account)
     '#value' => $list_id,
   );
 
-  $form['submit'] = array('#type' => 'submit', '#value' => t('Submit'));
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Subscribe'),
+  );
   $form['#validate'][] = 'campaignmonitor_subscribe_form_validate';
 
   return $form;
@@ -360,6 +360,7 @@ function campaignmonitor_subscribe_form_validate($form, &$form_state) {
   $name = isset($form_state['values']['name']) ? check_plain($form_state['values']['name']) : '';
   $email = check_plain($form_state['values']['email']);
 
+  // Update subscriber information or add new subscriber to the list.
   if (!$cm->subscribe($list_id, $email, $name, $custom_fields)) {
     form_set_error('', t('You where not subscribed to the list, please try again later.'));
     return FALSE;

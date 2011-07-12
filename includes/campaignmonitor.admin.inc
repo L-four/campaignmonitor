@@ -44,12 +44,12 @@ function campaignmonitor_admin_settings_general() {
     $defaults = variable_get('campaignmonitor_general', array());
     $form['campaignmonitor_general'] = array(
       '#type' => 'fieldset',
-      '#title' => t('General settings'),      
+      '#title' => t('General settings'),
       '#collapsible' => TRUE,
       '#collapsed' => FALSE,
       '#tree' => TRUE,
     );
- 
+
     $form['campaignmonitor_general']['cache_timeout'] = array(
       '#type' => 'textfield',
       '#title' => t('Cache timeout'),

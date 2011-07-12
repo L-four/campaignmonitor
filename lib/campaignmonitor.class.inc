@@ -6,7 +6,7 @@
  * Campaign Monitor v3 API. It's implemented as a Singleton class and instances
  * are creted usign the account variables and the statuc function getConnector()
  * e.g.
- * 
+ *
  * $account = variable_get('campaignmonitor_account', array());
  * $cm = CampaignMonitor::getConnector($account['api_key'], $account['client_id']);
  *
@@ -174,7 +174,7 @@ class CampaignMonitor {
    * @param string $api_key
    * @param string $client_key
    * @param string $libraryPath
-   * @return object CampaingMonitor 
+   * @return object CampaingMonitor
    */
   public static function getConnector($api_key, $client_key) {
     if (!isset(self::$instance)) {
@@ -185,7 +185,7 @@ class CampaignMonitor {
   }
 
   /**
-   * Returns the lastest error from the stack of possible errors encountered 
+   * Returns the lastest error from the stack of possible errors encountered
    * during communication with campaign monitor servers.
    *
    * @return array with an error code and message.
@@ -299,7 +299,7 @@ class CampaignMonitor {
    * @param string $listId campaign monitor list id
    * @return array with the information or FALSE on failure
    */
-  public function getListDetails($listId) {    
+  public function getListDetails($listId) {
     // If lists have not been loaded yet, get them as they build the basic cache.
     if (empty($this->lists)) {
       $this->getLists();
@@ -333,11 +333,11 @@ class CampaignMonitor {
           return FALSE;
         }
       }
-      else {        
+      else {
         return FALSE;
       }
     }
-    
+
     return $this->lists[$listId]['details'];
   }
 
@@ -373,7 +373,7 @@ class CampaignMonitor {
               $this->lists[$listId]['CustomFields'][$field->Key][$name] = $details;
             }
           }
-          
+
           // Update cache with list details.
           cache_set('campaignmonitor_lists', $this->lists, 'cache');
         }
@@ -385,7 +385,7 @@ class CampaignMonitor {
         return FALSE;
       }
     }
-    
+
     return $this->lists[$listId]['CustomFields'];
   }
 
@@ -439,7 +439,7 @@ class CampaignMonitor {
     if ($obj = $this->createListObj($listId)) {
       // @todo: check that the options are correct.
       $result = $obj->update($options);
-      if($result->was_successful()) {
+      if ($result->was_successful()) {
 
         // Update cache local list.
         $this->lists[$listId]['name'] = $options['Title'];
@@ -450,7 +450,8 @@ class CampaignMonitor {
         // Update the cache.
         cache_set('campaignmonitor_lists', $this->lists, 'cache');
         return TRUE;
-      } else {
+      }
+      else {
         $this->addError(WATCHDOG_ERROR, $result->response->Message, $result->http_status_code);
       }
     }
@@ -565,7 +566,7 @@ class CampaignMonitor {
    * Get basic information about campaigns in the form of a keyed array. The
    * information is store locally in a temporally cache. The array is formatted
    * as below.
-   * 
+   *
    * $campaigns[$id] => array(
    *   'Name' => 'Campaign Name',
    *   'Subject' => 'Campaign subject line',
@@ -655,7 +656,7 @@ class CampaignMonitor {
               $this->subscribers[$listId . $email][$key] = $value;
             }
           }
-          // Save the campaign information in the cache.
+          // Save the subscriber information in the cache.
           cache_set('campaignmonitor_subscribers', $this->subscribers, 'cache', $this->getCacheTimeout());
         }
         else {
@@ -680,13 +681,33 @@ class CampaignMonitor {
    * @return boolean TRUE if subscribed else FALSE
    */
   public function isSubscribed($listId, $email) {
-    $result = $this->getSubscriber($listId, $email, $reset);
+    $result = $this->getSubscriber($listId, $email);
     if (!empty($result)) {
       if ($result['State'] == 'Active') {
         return TRUE;
       }
     }
     return FALSE;
+  }
+
+  /**
+   * Remove subscriber form local cache, which force the data to be fetched form
+   * campaign monitor at next request. This function should be used in connection
+   * with updating subscriber information.
+   *
+   * @param type $listId
+   * @param type $email
+   */
+  public function removeSubscriberFromCache($listId, $email) {
+   if (($cache = cache_get('campaignmonitor_subscribers')) && !empty($cache->data)) {
+      // Cache information found.
+      $this->subscribers = $cache->data;
+      if (isset($this->subscribers[$listId . $email])) {
+        // Subscriber found in the cahce, so remove it.
+        unset($this->subscribers[$listId . $email]);
+        cache_set('campaignmonitor_subscribers', $this->subscribers, 'cache', $this->getCacheTimeout());
+      }
+    }
   }
 
   /**
@@ -701,12 +722,13 @@ class CampaignMonitor {
    * @return boolean TRUE on success else FALSE
    */
   public function subscribe($listId, $email, $name = '', $customFields = array()) {
+    $this->removeSubscriberFromCache($listId, $email);
     if ($obj = $this->createSubscriberObj($listId)) {
       $result = $obj->add(array(
           'EmailAddress' => $email,
           'Name' => $name,
           'CustomFields' => $customFields,
-          'Resubscribe' => true,
+          'Resubscribe' => TRUE,
       ));
       if (!$result->was_successful()) {
         $this->addError(WATCHDOG_ERROR, $result->response->Message, $result->http_status_code);
@@ -739,7 +761,7 @@ class CampaignMonitor {
   /**
    * Clears all the caches used by this wrapper object.
    */
-  public function clearCache() {    
+  public function clearCache() {
     cache_clear_all('campaignmonitor_lists', 'cache');
     cache_clear_all('campaignmonitor_list_stats', 'cache');
     cache_clear_all('campaignmonitor_campaigns', 'cache');
