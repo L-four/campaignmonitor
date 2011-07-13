@@ -184,7 +184,7 @@ function campaignmonitor_block_view($delta) {
 function campaignmonitor_subscribe_form($form, &$form_state, $list_id, $account) {
   global $user;
 
-  //cd Get campaign monitor object.
+  // Get campaign monitor object.
   $cm = CampaignMonitor::getConnector($account['api_key'], $account['client_id']);
 
   // Get lists form campaign monitor (or the local cache).
@@ -365,11 +365,7 @@ function campaignmonitor_subscribe_form_validate($form, &$form_state) {
     form_set_error('', t('You where not subscribed to the list, please try again later.'));
     return FALSE;
   }
-}
 
-/**
- * Subscription form submit handler.
- */
-function campaignmonitor_subscribe_form_submit($form, &$form_state) {
-  drupal_set_message(t('You are now subscribed to the selected list(s).'), 'status');
+  $lists = $cm->getLists();
+  drupal_set_message(t('You are now subscribed to the "@list" list.', array('@list' => $lists[$list_id]['name'])), 'status');
 }

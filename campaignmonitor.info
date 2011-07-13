@@ -3,7 +3,7 @@ description = "This module uses the Campaign Monitor v3 API to add newsletter fu
 core = 7.x
 php = 5.0
 configure = admin/config/services/campaignmonitor
-package = Other
+package = Campaign Monitor
 
 files[] = campaignmonitor.module
 files[] = includes/campaignmonitor.admin.inc

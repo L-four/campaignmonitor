@@ -722,7 +722,6 @@ class CampaignMonitor {
    * @return boolean TRUE on success else FALSE
    */
   public function subscribe($listId, $email, $name = '', $customFields = array()) {
-    $this->removeSubscriberFromCache($listId, $email);
     if ($obj = $this->createSubscriberObj($listId)) {
       $result = $obj->add(array(
           'EmailAddress' => $email,
@@ -734,6 +733,7 @@ class CampaignMonitor {
         $this->addError(WATCHDOG_ERROR, $result->response->Message, $result->http_status_code);
         return FALSE;
       }
+      $this->removeSubscriberFromCache($listId, $email);
       return TRUE;
     }
     return FALSE;
@@ -753,6 +753,7 @@ class CampaignMonitor {
         $this->addError(WATCHDOG_ERROR, $result->response->Message, $result->http_status_code);
         return FALSE;
       }
+      $this->removeSubscriberFromCache($listId, $email);
       return TRUE;
     }
     return FALSE;

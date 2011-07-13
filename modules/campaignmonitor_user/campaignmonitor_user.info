@@ -1,0 +1,6 @@
+name = Campaign Monitor user page
+description = "Adds support for campaign monitor in the user profile"
+core = 7.x
+package = Campaign Monitor
+
+files[] = campaignmonitor_user.module
