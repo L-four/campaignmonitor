@@ -1,0 +1,6 @@
+name = Campaign Monitor registration page
+description = "Adds support for campaign monitor on the registration page"
+core = 7.x
+package = Campaign Monitor
+
+files[] = campaignmonitor_registration.module

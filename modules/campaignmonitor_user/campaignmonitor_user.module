@@ -2,7 +2,8 @@
 
 /*
  * @file
- *
+ * Enable users to select which newsletter lists they want to subscribe to in a
+ * tab on their profile page.
  */
 
 /**
@@ -11,7 +12,7 @@
 function campaignmonitor_user_permission() {
   return array(
     'access campaign monitor user' => array(
-      'title' => t('Allow Campaign Monitor on user page'),
+      'title' => t('Access Campaign Monitor on user page'),
       'description' => t('Allow user to subscribe to lists on the user page.'),
     ),
   );
@@ -47,6 +48,11 @@ function campaignmonitor_user_access($account) {
   return FALSE;
 }
 
+/**
+ * Builds the selection list for the user profile page.
+ *
+ * @return array $form
+ */
 function campaignmonitor_user_form() {
   global $user;
   $form = array();
@@ -100,7 +106,7 @@ function campaignmonitor_user_form_validate($form, &$form_state) {
   foreach ($form_state['values']['lists'] as $list_id => $selected) {
     if ($selected) {
       // If not subscribed, subscribe else do nothing. The subscribe state is
-      // already in the cache, so it cheaper to check the re-subscribe.
+      // already in the cache, so it cheaper to check then re-subscribe.
       if (!$cm->isSubscribed($list_id, $user->mail)) {
         if (!$cm->subscribe($list_id, $user->mail, $user->name)) {
           form_set_error('', t('You where not subscribed to the list, please try again later.'));
@@ -110,7 +116,7 @@ function campaignmonitor_user_form_validate($form, &$form_state) {
       }
     }
     else {
-      // Maybe the is an unsubscribe.
+      // Maybe this is an unsubscribe.
       if ($cm->isSubscribed($list_id, $user->mail)) {
         if (!$cm->unsubscribe($list_id, $user->mail)) {
           form_set_error('', t('You where not unsubscribed to the list(s), please try again later.'));
@@ -120,8 +126,4 @@ function campaignmonitor_user_form_validate($form, &$form_state) {
       }
     }
   }
-}
-
-function campaignmonitor_user_form_submit($form, &$form_state) {
-  
 }
