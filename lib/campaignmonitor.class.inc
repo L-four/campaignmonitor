@@ -88,7 +88,7 @@ class CampaignMonitor {
       'message' => t($message),
     );
     if ($this->logErrors) {
-      $msg = t('Failed with code: @code and message: $msg', array('@code' => $code, '@msg' => $message));
+      $msg = t('Failed with code: @code and message: @msg', array('@code' => $code, '@msg' => $message));
       watchdog('campaignmonitor', $msg, NULL, $type);
     }
   }
