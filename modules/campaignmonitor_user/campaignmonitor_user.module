@@ -58,8 +58,7 @@ function campaignmonitor_user_form() {
   $form = array();
 
   // Get connected to the API and get lists.
-  $account = variable_get('campaignmonitor_account', FALSE);
-  $cm = CampaignMonitor::getConnector($account['api_key'], $account['client_id']);
+  $cm = CampaignMonitor::getConnector();
   $lists = $cm->getLists();
 
   // Build options for the form selector.
@@ -98,8 +97,7 @@ function campaignmonitor_user_form_validate($form, &$form_state) {
   global $user;
 
   // Get connected to the API and get lists.
-  $account = variable_get('campaignmonitor_account', FALSE);
-  $cm = CampaignMonitor::getConnector($account['api_key'], $account['client_id']);
+  $cm = CampaignMonitor::getConnector();
   $lists_info = $cm->getLists();
 
   // Loop through the lists

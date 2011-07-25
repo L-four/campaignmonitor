@@ -24,8 +24,7 @@ function campaignmonitor_registration_permission() {
  */
 function campaignmonitor_registration_form_user_register_form_alter(&$form, &$form_state, $form_id) {
   // Get connected to the API and get lists.
-  $account = variable_get('campaignmonitor_account', FALSE);
-  $cm = CampaignMonitor::getConnector($account['api_key'], $account['client_id']);
+  $cm = CampaignMonitor::getConnector();
   $lists = $cm->getLists();
 
   // Build options for the form selector.
@@ -58,8 +57,7 @@ function campaignmonitor_registration_form_user_register_form_alter(&$form, &$fo
 function campaignmonitor_registration_form_user_register_submit($form, &$form_state) {
   if (isset($form_state['values']['campaignmonitor_lists'])) {
     // Get connected to the API and get lists.
-    $account = variable_get('campaignmonitor_account', FALSE);
-    $cm = CampaignMonitor::getConnector($account['api_key'], $account['client_id']);
+    $cm = CampaignMonitor::getConnector();
     $lists_info = $cm->getLists();
 
     // Find the selected lists, if any.

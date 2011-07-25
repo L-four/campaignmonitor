@@ -118,7 +118,7 @@ function campaignmonitor_block_info() {
   $account = variable_get('campaignmonitor_account', FALSE);
   if ($account) {
     // Create a block for each list.
-    $lists = CampaignMonitor::getConnector($account['api_key'], $account['client_id'])->getLists();
+    $lists = CampaignMonitor::getConnector()->getLists();
     if ($lists) {
       foreach ($lists as $list_id => $list) {
         // If list==0 that means that list is not chosen, don't create a block.
@@ -149,8 +149,7 @@ function campaignmonitor_block_view($delta) {
 
   if (CAMPAIGNMONITOR_ARCHIVE_DELTA == $delta) {
     // Connect to campaign monitor and get past campaigns.
-    $account = variable_get('campaignmonitor_account', FALSE);
-    $campaigns = CampaignMonitor::getConnector($account['api_key'], $account['client_id'])->getCampaigns();
+    $campaigns = CampaignMonitor::getConnector()->getCampaigns();
     if ($campaigns) {
       $content = '<ul>';
       foreach ($campaigns as $campaign) {
@@ -168,10 +167,9 @@ function campaignmonitor_block_view($delta) {
   }
   else {
     // Get lists form Campaign Monitor.
-    $account = variable_get('campaignmonitor_account', FALSE);
-    $lists = CampaignMonitor::getConnector($account['api_key'], $account['client_id'])->getLists();
+    $lists = CampaignMonitor::getConnector()->getLists();
     $block['subject'] = t($lists[$delta]['name']);
-    $block['content'] = drupal_get_form('campaignmonitor_subscribe_form', $delta, $account);
+    $block['content'] = drupal_get_form('campaignmonitor_subscribe_form', $delta);
 
     // Add some basic styling of form elements.
     drupal_add_css(drupal_get_path('module', 'campaignmonitor') . '/css/campaignmonitor.theme.css');
@@ -183,11 +181,11 @@ function campaignmonitor_block_view($delta) {
 /**
  * Builds the subscription form used in blocks.
  */
-function campaignmonitor_subscribe_form($form, &$form_state, $list_id, $account) {
+function campaignmonitor_subscribe_form($form, &$form_state, $list_id) {
   global $user;
 
   // Get campaign monitor object.
-  $cm = CampaignMonitor::getConnector($account['api_key'], $account['client_id']);
+  $cm = CampaignMonitor::getConnector();
 
   // Get lists form campaign monitor (or the local cache).
   $list = $cm->getExtendedList($list_id);
@@ -331,8 +329,7 @@ function campaignmonitor_subscribe_form($form, &$form_state, $list_id, $account)
  */
 function campaignmonitor_subscribe_form_validate($form, &$form_state) {
   // Get a campaign monitor object.
-  $account = variable_get('campaignmonitor_account', FALSE);
-  $cm = CampaignMonitor::getConnector($account['api_key'], $account['client_id']);
+  $cm = CampaignMonitor::getConnector();
 
   $custom_fields = array();
   if (isset($form_state['values']['CustomFields'])) {
