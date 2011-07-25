@@ -15,6 +15,11 @@ function campaignmonitor_admin_settings_general() {
   // Get account details.
   $account = variable_get('campaignmonitor_account', array());
 
+  // Test if the library have been installed, if it have not be installed a error
+  // message will be shown.
+  $cm = CampaignMonitor::getConnector();
+  $library_path = $cm->getLibraryPath();
+
   $form['campaignmonitor_account'] = array(
     '#type' => 'fieldset',
     '#title' => t('Account details'),
@@ -58,12 +63,11 @@ function campaignmonitor_admin_settings_general() {
       '#default_value' => isset($defaults['cache_timeout']) ? $defaults['cache_timeout'] : '360',
     );
 
-    $path = drupal_get_path('module', 'campaignmonitor') . '/lib/createsend-php/';
     $form['campaignmonitor_general']['library_path'] = array(
       '#type' => 'textfield',
       '#title' => t('Library path'),
       '#description' => t('Campign monitor library path.'),
-      '#default_value' => isset($defaults['library_path']) ? $defaults['library_path'] : $path,
+      '#default_value' => $library_path ? $library_path : (isset($defaults['library_path']) ? $defaults['library_path'] : ''),
     );
 
     $form['campaignmonitor_general']['archive'] = array(

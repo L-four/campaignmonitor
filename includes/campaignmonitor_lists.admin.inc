@@ -20,7 +20,7 @@ function campaignmonitor_admin_settings_lists() {
   }
 
   // Download list information form campaign monitor
-  $cm = CampaignMonitor::getConnector($account['api_key'], $account['client_id']);
+  $cm = CampaignMonitor::getConnector();
   $lists = $cm->getLists();
 
   $header = array(
@@ -83,8 +83,7 @@ function campaignmonitor_admin_settings_list_edit($form, &$form_state, $list_id)
   $form =  array('#tree' => TRUE);
 
   // Get campaign monitor connection.
-  $account = variable_get('campaignmonitor_account', array());
-  $cm = CampaignMonitor::getConnector($account['api_key'], $account['client_id']);
+  $cm = CampaignMonitor::getConnector();
 
   // Load extended information about the list.
   $list = $cm->getExtendedList($list_id);
@@ -201,8 +200,7 @@ function campaignmonitor_admin_settings_list_edit_validate($form, &$form_state) 
   );
 
   // Get connected.
-  $account = variable_get('campaignmonitor_account', array());
-  $cm = CampaignMonitor::getConnector($account['api_key'], $account['client_id']);
+  $cm = CampaignMonitor::getConnector();
 
   // Update the information.
   if (!$cm->updateList($form_state['values']['listId'], $options)) {
@@ -229,8 +227,7 @@ function campaignmonitor_admin_settings_list_edit_validate($form, &$form_state) 
  */
 function campaignmonitor_admin_settings_list_delete($form, &$form_state, $list_id) {
   // Get campaign monitor connection.
-  $account = variable_get('campaignmonitor_account', array());
-  $lists = CampaignMonitor::getConnector($account['api_key'], $account['client_id'])->getLists();
+  $lists = CampaignMonitor::getConnector()->getLists();
 
   $str = t('You are about to delete the list "@list", which may still have users
             subscribed to it.<br /><br />This action cannot be undone.',
@@ -254,8 +251,7 @@ function campaignmonitor_admin_settings_list_delete($form, &$form_state, $list_i
  */
 function campaignmonitor_admin_settings_list_delete_submit($form, &$form_state) {
   // Delete list at campaign monitor.
-  $account = variable_get('campaignmonitor_account', array());
-  $cm = CampaignMonitor::getConnector($account['api_key'], $account['client_id']);
+  $cm = CampaignMonitor::getConnector();
 
   // Delete the list at campaign monitor.
   if ($cm->deleteList($form_state['values']['list_id'])) {
@@ -320,11 +316,9 @@ function campaignmonitor_admin_settings_list_create_form() {
  * @param array $form_state
  * @return boolean FALSE on failure
  */
-function campaignmonitor_admin_settings_list_create_form_validate($form, &$form_state) {
-  $account = variable_get('campaignmonitor_account', array());
-  $cm = CampaignMonitor::getConnector($account['api_key'], $account['client_id']);
-  $result = $cm->createList($account['client_id'],
-                            $form_state['values']['listname'],
+function campaignmonitor_admin_settings_list_create_form_validate($form, &$form_state) {  
+  $cm = CampaignMonitor::getConnector();
+  $result = $cm->createList($form_state['values']['listname'],
                             $form_state['values']['UnsubscribePage'],
                             $form_state['values']['ConfirmedOptIn'],
                             $form_state['values']['ConfirmationSuccessPage']);

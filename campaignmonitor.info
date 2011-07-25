@@ -4,8 +4,10 @@ core = 7.x
 php = 5.0
 configure = admin/config/services/campaignmonitor
 package = Campaign Monitor
+dependencies[] = libraries
 
 files[] = campaignmonitor.module
+files[] = campaignmonitor.install
 files[] = includes/campaignmonitor.admin.inc
 files[] = includes/campaignmonitor_list.admin.inc
 files[] = includes/campaignmonitor_stats.admin.inc

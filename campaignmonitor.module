@@ -119,12 +119,14 @@ function campaignmonitor_block_info() {
   if ($account) {
     // Create a block for each list.
     $lists = CampaignMonitor::getConnector($account['api_key'], $account['client_id'])->getLists();
-    foreach ($lists as $list_id => $list) {
-      // If list==0 that means that list is not chosen, don't create a block.
-      if ($list) {
-        $blocks[$list_id] = array(
-          'info' => t('Subscribe to @list_name', array('@list_name' => $list['name'])),
-        );
+    if ($lists) {
+      foreach ($lists as $list_id => $list) {
+        // If list==0 that means that list is not chosen, don't create a block.
+        if ($list) {
+          $blocks[$list_id] = array(
+            'info' => t('Subscribe to @list_name', array('@list_name' => $list['name'])),
+          );
+        }
       }
     }
 

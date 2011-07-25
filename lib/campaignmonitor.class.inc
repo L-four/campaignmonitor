@@ -28,7 +28,7 @@ class CampaignMonitor {
   const CampaignMonitorCLIENT = 'csrest_clients.php';
   const CampaignMonitorLIST = 'csrest_lists.php';
   const CampaignMonitorSubscribers = 'csrest_subscribers.php';
-  private $libraryPath;
+  private $libraryPath = FALSE;
 
 
   protected $api_key;
@@ -55,18 +55,17 @@ class CampaignMonitor {
    * @param string $client_id
    * @param string $libraryPath optional
    */
-  private function __construct($api_key, $client_id) {
-    $this->api_key = $api_key;
-    $this->client_id = $client_id;
+  private function __construct($api_key = FALSE, $client_id = FALSE) {
 
-    // Build library path.
-    $setting = variable_get('campaignmonitor_general', array());
-    if (isset($setting['library_path']) && !empty($setting['library_path'])) {
-      $this->libraryPath = $setting['library_path'];
-    }
-    else {
-      $this->libraryPath = drupal_get_path('module', 'campaignmonitor') . '/lib/createsend-php/';
-    }
+    // Get account information.
+    $account = variable_get('campaignmonitor_account', array());
+
+    // Get api/client id if they are defined.
+    $this->api_key = $api_key ? $api_key : (isset($account['api_key']) ? $account['api_key'] : FALSE);
+    $this->client_id = $client_id ? $client_id : (isset($account['client_id']) ? $account['client_id'] : FALSE);
+
+    // Trying to find the campaign monitor library.
+    $this->getLibraryPath();
 
     // Enable logging ?.
     if (isset($setting['logging'])) {
@@ -94,6 +93,43 @@ class CampaignMonitor {
   }
 
   /**
+   * Tries to find the path of the Campaign Monitor API library path. If the
+   * library is not found a error message is set and FALSE is returned.
+   *
+   * @return mixed string with library path or FALSE if library is not found
+   */
+  public function getLibraryPath() {
+    if (!$this->libraryPath) {
+      $path = FALSE;
+      $setting = variable_get('campaignmonitor_general', array());
+
+      // Uses library module to detect the library.
+      if (module_exists('libraries')) {
+        $libraries = libraries_get_libraries();
+        if (isset($libraries['campaignmonitor'])) {
+          $this->libraryPath = $libraries['campaignmonitor'];
+        }
+      }
+
+      // If the library was not found, try use defined path
+      if (!$this->libraryPath) {
+        if (isset($setting['library_path']) && !empty($setting['library_path'])) {
+          // User have defined the library path.
+          if (file_exists($setting['library_path'])) {
+            $this->libraryPath = $setting['library_path'];
+          }
+        }
+      }
+    }
+
+    if (!$this->libraryPath) {
+      drupal_set_message(t('The Campaign Monitor PHP intergration library was not detected, please see the README for information about installing the library.'), 'error', FALSE);
+    }
+
+    return $this->libraryPath;
+  }
+
+  /**
    * Helper function that loads the part of the API defined in the $file
    * variable. This function is mostly used by create[xxx]Obj functions below.
    *
@@ -101,8 +137,8 @@ class CampaignMonitor {
    * @return boolean TRUE of success else FALSE
    */
   private function libraryLoad($file) {
-    if ($this->libraryExists()) {
-      @require_once $this->libraryPath . $file;
+    if ($this->getLibraryPath()) {
+      @require_once $this->libraryPath . '/' . $file;
       return TRUE;
     }
     $this->addError(WATCHDOG_ERROR, t('Unable to load client library.'));
@@ -176,7 +212,7 @@ class CampaignMonitor {
    * @param string $libraryPath
    * @return object CampaingMonitor
    */
-  public static function getConnector($api_key, $client_key) {
+  public static function getConnector($api_key = FALSE, $client_key = FALSE) {
     if (!isset(self::$instance)) {
       $class = __CLASS__;
       self::$instance = new $class($api_key, $client_key);
@@ -204,18 +240,6 @@ class CampaignMonitor {
         'message' => t('There dos not seam to been any errors.')
       );
     }
-  }
-
-  /**
-   * Helper function that checks if the library path given exists.
-   *
-   * @return boolean if the library exists TRUE is retuerned else FALSE
-   */
-  public function libraryExists() {
-    if (file_exists($this->libraryPath)) {
-      return TRUE;
-    }
-    return FALSE;
   }
 
   /**
@@ -534,16 +558,15 @@ class CampaignMonitor {
    * Create a new list at the campaign monitor servers. The side-effect is that
    * the local cache is cleared.
    *
-   * @param string $client_id client id
    * @param string $title
    * @param string $unsubscribePage optional
    * @param boolean $confirmedOptIn optional
    * @param string $confirmationSuccessPage optional
    * @return boolean TRUE on success else FALSE
    */
-  public function createList($client_id, $title, $unsubscribePage = '', $confirmedOptIn = FALSE, $confirmationSuccessPage = '') {
+  public function createList($title, $unsubscribePage = '', $confirmedOptIn = FALSE, $confirmationSuccessPage = '') {
     if ($obj = $this->createListObj(NULL)) {
-      $result = $obj->create($client_id, array(
+      $result = $obj->create($this->client_id, array(
         'Title' => check_plain($title),
         'UnsubscribePage' => check_plain($unsubscribePage),
         'ConfirmedOptIn' => $confirmedOptIn,

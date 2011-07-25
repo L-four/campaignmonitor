@@ -29,12 +29,12 @@ sure that your PHP installation has SOAP enabled.
 - Create a folder in your modules directory called campaignmonitor and put the
 module's files in this directory
 
-- Go into the module lib folder and download or clone the createsend-php API
-  from github.com. It can be download from http://github.com/campaignmonitor/createsend-php
-  or use the command below
+- Go into sites/all/libraries/ folder and download or clone the createsend-php
+  API from github.com. It can be download from
+  http://github.com/campaignmonitor/createsend-php or use the command below.
 
-  ~$ git clone https://github.com/campaignmonitor/createsend-php.git
-  ~$ cd createsend-php
+  ~$ git clone https://github.com/campaignmonitor/createsend-php.git campaignmonitor
+  ~$ cd campaignmonitor
   ~$ git checkout e6a7e111864854dce39a69edce7d5b0f20f151ca
 
 - Enable the module on the Modules administration page: /admin/modules
