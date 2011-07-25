@@ -109,7 +109,7 @@ function campaignmonitor_admin_settings_general() {
  */
 function campaignmonitor_admin_settings_general_submit($form, &$form_state) {
   // If archive block have been selected, rehash the block cache.
-  if ($form_state['values']['campaignmonitor_general']['archive']) {
+  if (isset($form_state['values']['campaignmonitor_general']['archive']) && $form_state['values']['campaignmonitor_general']['archive']) {
     _block_rehash();
   }
 }

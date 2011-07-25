@@ -31,23 +31,25 @@ function campaignmonitor_admin_settings_lists() {
   );
 
   $rows = array();
-  foreach ($lists as $id => $list) {
-    // Define supported oprations and allow other modules to add more.
-    $operations = array(
-      'Edit' => l(t('Edit'), 'admin/config/services/campaignmonitor/lists/' . $id . '/edit'),
-      'Delete' => l(t('Delete'), 'admin/config/services/campaignmonitor/lists/' . $id . '/delete')
-    );
-    drupal_alter('campaignmonitor_operations', $operations);
+  if ($lists) {
+    foreach ($lists as $id => $list) {
+      // Define supported oprations and allow other modules to add more.
+      $operations = array(
+        'Edit' => l(t('Edit'), 'admin/config/services/campaignmonitor/lists/' . $id . '/edit'),
+        'Delete' => l(t('Delete'), 'admin/config/services/campaignmonitor/lists/' . $id . '/delete')
+      );
+      drupal_alter('campaignmonitor_operations', $operations);
 
-    $stats = $cm->getListStats($id);
-    $rows[] = array(
-      'data' => array(
-          $list['name'],
-          $id,
-          $stats['TotalActiveSubscribers'] . ' / ' . $stats['TotalUnsubscribes'],
-          implode(' ', $operations),
-        ),
-    );
+      $stats = $cm->getListStats($id);
+      $rows[] = array(
+        'data' => array(
+            $list['name'],
+            $id,
+            $stats['TotalActiveSubscribers'] . ' / ' . $stats['TotalUnsubscribes'],
+            implode(' ', $operations),
+          ),
+      );
+    }
   }
 
   // Theme the information as a table.
