@@ -25,7 +25,7 @@ function campaignmonitor_user_menu() {
   $items = array();
 
   $items['user/%user/newsletters'] = array(
-    'title' => 'My Newsletters',
+    'title' => 'My newsletters',
     'page callback' => 'drupal_get_form',
     'page arguments' => array('campaignmonitor_user_form'),
     'access callback' => 'campaignmonitor_user_access',
@@ -65,27 +65,37 @@ function campaignmonitor_user_form() {
   $options = array();
   $default = array();
   foreach ($lists as $key => $list) {
-    $options[$key] = $list['name'];
 
-    // Check if the user is subscribed to the current list.
-    $default[$key] = 0;
-    if ($cm->isSubscribed($key, $user->mail)) {
-      $default[$key] = $key;
+    // Check if the select is choosen to be shown.
+    $list_options = variable_get('campaignmonitor_list_' . $key, FALSE);
+    if ($list_options && isset($list_options['display']['user']) && $list_options['display']['user']) {
+      $options[$key] = $list['name'];
+
+      // Check if the user is subscribed to the current list.
+      $default[$key] = 0;
+      if ($cm->isSubscribed($key, $user->mail)) {
+        $default[$key] = $key;
+      }
     }
   }
 
-  $form['lists'] = array(
-    '#type' => 'checkboxes',
-    '#title' => t('News lists'),
-    '#description' => t('Select the news lists, that you want to subscribe to from campaign monitor.'),
-    '#options' => $options,
-    '#default_value' => $default,
-  );
+  if (!empty($options)) {
+    $form['lists'] = array(
+      '#type' => 'checkboxes',
+      '#title' => t('News lists'),
+      '#description' => t('Select the news lists, that you want to subscribe to from campaign monitor.'),
+      '#options' => $options,
+      '#default_value' => $default,
+    );
 
-  $form['submit'] = array(
-    '#type' => 'submit',
-    '#value' => t('Update subscriptions'),
-  );
+    $form['submit'] = array(
+      '#type' => 'submit',
+      '#value' => t('Update subscriptions'),
+    );
+  }
+  else {
+    drupal_set_message('There are no available lists to subscribe to at the moment.', 'warning');
+  }
 
   $form['#submit'] = array('campaignmonitor_user_form_submit');
   $form['#validate'] = array('campaignmonitor_user_form_validate');
@@ -124,4 +134,18 @@ function campaignmonitor_user_form_validate($form, &$form_state) {
       }
     }
   }
+}
+
+function campaignmonitor_user_form_campaignmonitor_admin_settings_list_edit_alter(&$form, &$form_state, $form_id) {
+  // Find form key to index the form array and load defaults.
+  $form_key = 'campaignmonitor_list_' . $form['listId']['#value'];
+  $defaults = variable_get($form_key, array());
+
+  // Add option to enable this form on the user page.
+  $form[$form_key]['display']['user'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Display list on user page'),
+    '#description' => t('Enable this list on the user page and allow subscription.'),
+    '#default_value' => isset($defaults['display']['user']) ? $defaults['display']['user'] : 0,
+  );
 }
