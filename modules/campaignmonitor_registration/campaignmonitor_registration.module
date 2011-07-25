@@ -30,7 +30,11 @@ function campaignmonitor_registration_form_user_register_form_alter(&$form, &$fo
   // Build options for the form selector.
   $options = array();
   foreach ($lists as $key => $list) {
-    $options[$key] = $list['name'];
+    // Check if the list is selected to be shown.
+    $list_options = variable_get('campaignmonitor_list_' . $key, FALSE);
+    if ($list_options && isset($list_options['display']['registration']) && $list_options['display']['registration']) {
+      $options[$key] = $list['name'];
+    }
   }
 
   if (!empty($options)) {
@@ -75,4 +79,18 @@ function campaignmonitor_registration_form_user_register_submit($form, &$form_st
     // Remove it from the form before the submit functions takes over (might not be needed).
     unset($form_state['values']['campaignmonitor_lists']);
   }
+}
+
+function campaignmonitor_registration_form_campaignmonitor_admin_settings_list_edit_alter(&$form, &$form_state, $form_id) {
+  // Find form key to index the form array and load defaults.
+  $form_key = 'campaignmonitor_list_' . $form['listId']['#value'];
+  $defaults = variable_get($form_key, array());
+
+  // Add option to enable this form on the user page.
+  $form[$form_key]['display']['registration'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Display list on registration page'),
+    '#description' => t('Enable this list on the registration page and allow subscription.'),
+    '#default_value' => isset($defaults['display']['registration']) ? $defaults['display']['registration'] : 0,
+  );
 }
