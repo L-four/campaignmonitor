@@ -65,10 +65,10 @@ function campaignmonitor_user_form() {
   $options = array();
   $default = array();
   foreach ($lists as $key => $list) {
-
     // Check if the list is selected to be shown.
     $list_options = variable_get('campaignmonitor_list_' . $key, FALSE);
-    if ($list_options && isset($list_options['display']['user']) && $list_options['display']['user']) {
+    $list_enabled = isset($list_options['status']['enabled']) ? $list_options['status']['enabled'] : 1;
+    if ($list_enabled && $list_options && isset($list_options['display']['user']) && $list_options['display']['user']) {
       $options[$key] = $list['name'];
 
       // Check if the user is subscribed to the current list.
