@@ -261,6 +261,9 @@ function campaignmonitor_admin_settings_list_edit_validate($form, &$form_state) 
   // Remove list options.
   unset($form_state['values']['campaignmonitor_list_' . $form_state['values']['listId']]['options']);
 
+  // Re-direct to list overview
+  $form_state['redirect'] = 'admin/config/services/campaignmonitor/lists';
+
   // Save display options and custom field selection
   system_settings_form_submit($form, $form_state);
 }
@@ -388,4 +391,37 @@ function campaignmonitor_admin_settings_list_create_form_validate($form, &$form_
 function campaignmonitor_admin_settings_list_create_form_submit($form, &$form_state) {
   _block_rehash();
   drupal_set_message(t('List has been created at Campaign monitor.'), 'status');
+}
+
+
+function campaignmonitor_admin_settings_list_enable($form, &$form_state, $list_id) {
+  // Get campaign monitor connection.
+  $lists = CampaignMonitor::getConnector()->getLists();
+
+  $str = t('You are about to enable the list "@list".',
+          array('@list' => $lists[$list_id]['name']));
+
+  // Build confirmation form.
+  $form['list_id'] = array('#type' => 'hidden', '#value' => $list_id);
+  $form['#submit'][] = 'campaignmonitor_admin_settings_list_enable_submit';
+  $confirm_question = 'Are you sure you want to enable this list ?';
+  return confirm_form($form,
+                    $confirm_question,
+                    'admin/config/services/campaignmonitor/lists', $str,
+                    t('Enable'), t('Cancel'));
+}
+
+function campaignmonitor_admin_settings_list_enable_submit($form, &$form_state) {
+  $list_key = 'campaignmonitor_list_' . $form_state['values']['list_id'];
+
+  // Get local list information and update enable state.
+  $list_options = variable_get($list_key, array());
+  $list_options['status']['enabled'] = 1;
+  variable_set($list_key, $list_options);
+
+  // Clear blocks cache.
+  _block_rehash();
+
+  // Re-direct to list overview
+  $form_state['redirect'] = 'admin/config/services/campaignmonitor/lists';
 }
