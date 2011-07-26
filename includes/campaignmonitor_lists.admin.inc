@@ -43,10 +43,14 @@ function campaignmonitor_admin_settings_lists() {
       $list_options = variable_get('campaignmonitor_list_' . $id, array());
       $class = 'campaignmonitor-list-enabled';
       if (isset($list_options['status']['enabled']) && !$list_options['status']['enabled']) {
-        $class = 'campaignmonitor-list-disabled';
-
         // Add endable operation.
+        $class = 'campaignmonitor-list-disabled';
         $operations['enable'] = l(t('Enable'), 'admin/config/services/campaignmonitor/lists/' . $id . '/enable');
+      }
+      else {
+        // Add endable operation.
+        $class = 'campaignmonitor-list-enabled';
+        $operations['disable'] = l(t('Disable'), 'admin/config/services/campaignmonitor/lists/' . $id . '/disable');
       }
 
       // Allow other modules to add more operations.
@@ -393,35 +397,54 @@ function campaignmonitor_admin_settings_list_create_form_submit($form, &$form_st
   drupal_set_message(t('List has been created at Campaign monitor.'), 'status');
 }
 
+/**
+ * Enables the list locally. The function is used as a menu callback in the list
+ * tables, when the list have been enabled the user is redirected to the list
+ * page.
+ *
+ * @param string $list_id campaign monitor list id.
+ */
+function campaignmonitor_admin_settings_list_enable($list_id) {
+  // Toggle list enable status.
+  campaignmonitor_admin_settings_list_toggle_enable($list_id);
 
-function campaignmonitor_admin_settings_list_enable($form, &$form_state, $list_id) {
-  // Get campaign monitor connection.
-  $lists = CampaignMonitor::getConnector()->getLists();
-
-  $str = t('You are about to enable the list "@list".',
-          array('@list' => $lists[$list_id]['name']));
-
-  // Build confirmation form.
-  $form['list_id'] = array('#type' => 'hidden', '#value' => $list_id);
-  $form['#submit'][] = 'campaignmonitor_admin_settings_list_enable_submit';
-  $confirm_question = 'Are you sure you want to enable this list ?';
-  return confirm_form($form,
-                    $confirm_question,
-                    'admin/config/services/campaignmonitor/lists', $str,
-                    t('Enable'), t('Cancel'));
+  // Re-direct to list overview.
+  drupal_goto('admin/config/services/campaignmonitor/lists');
 }
 
-function campaignmonitor_admin_settings_list_enable_submit($form, &$form_state) {
-  $list_key = 'campaignmonitor_list_' . $form_state['values']['list_id'];
+/**
+ * Disables the list locally. The function is used as a menu callback in the
+ * list tables, when the list have been disabled the user is redirected to the
+ * list page.
+ *
+ * @param string $list_id campaign monitor list id.
+ */
+function campaignmonitor_admin_settings_list_disable($list_id) {
+  // Toggle list enable status.
+  campaignmonitor_admin_settings_list_toggle_enable($list_id);
+
+  // Re-direct to list overview.
+  drupal_goto('admin/config/services/campaignmonitor/lists');
+}
+
+/**
+ * Helper function that enables/disable a given list.
+ *
+ * @param string $list_id campaign monitor list id
+ * @param int $enable is optional an will as default enable the list
+ */
+function campaignmonitor_admin_settings_list_toggle_enable($list_id) {
+  $list_key = 'campaignmonitor_list_' . $list_id;
 
   // Get local list information and update enable state.
   $list_options = variable_get($list_key, array());
-  $list_options['status']['enabled'] = 1;
+  $enable = 0;
+  if (isset($list_options['status']['enabled'])) {
+    $enable = $list_options['status']['enabled'] == 1 ? 0 : 1;
+  }
+  $list_options['status']['enabled'] = $enable;
   variable_set($list_key, $list_options);
 
   // Clear blocks cache.
   _block_rehash();
-
-  // Re-direct to list overview
-  $form_state['redirect'] = 'admin/config/services/campaignmonitor/lists';
 }

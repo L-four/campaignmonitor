@@ -97,9 +97,18 @@ function campaignmonitor_menu() {
   );
 
   $items['admin/config/services/campaignmonitor/lists/%/enable'] = array(
-    'title' => 'Edit list',
-    'page callback' => 'drupal_get_form',
-    'page arguments' => array('campaignmonitor_admin_settings_list_enable', 5),
+    'title' => 'Enable list',
+    'page callback' => 'campaignmonitor_admin_settings_list_enable',
+    'page arguments' => array(5),
+    'access arguments' => array('administer campaignmonitor'),
+    'type' => MENU_CALLBACK,
+    'file' => 'includes/campaignmonitor_lists.admin.inc',
+  );
+
+  $items['admin/config/services/campaignmonitor/lists/%/disable'] = array(
+    'title' => 'Disable list',
+    'page callback' => 'campaignmonitor_admin_settings_list_disable',
+    'page arguments' => array(5),
     'access arguments' => array('administer campaignmonitor'),
     'type' => MENU_CALLBACK,
     'file' => 'includes/campaignmonitor_lists.admin.inc',
@@ -130,8 +139,9 @@ function campaignmonitor_block_info() {
     $lists = CampaignMonitor::getConnector()->getLists();
     if ($lists) {
       foreach ($lists as $list_id => $list) {
-        // If list==0 that means that list is not chosen, don't create a block.
-        if ($list) {
+        // Get local configuration options and check if the list is enabled.
+        $list_options = variable_get('campaignmonitor_list_' . $list_id, array());
+        if (isset($list_options['status']['enabled']) ? $list_options['status']['enabled'] : 1) {
           $blocks[$list_id] = array(
             'info' => t('Subscribe to @list_name', array('@list_name' => $list['name'])),
           );
@@ -177,11 +187,26 @@ function campaignmonitor_block_view($delta) {
   else {
     // Get lists form Campaign Monitor.
     $lists = CampaignMonitor::getConnector()->getLists();
-    $block['subject'] = t($lists[$delta]['name']);
-    $block['content'] = drupal_get_form('campaignmonitor_subscribe_form', $delta);
+    if ($lists) {
+      // Get local configuration options and check if the list is enabled.
+      $list_options = variable_get('campaignmonitor_list_' . $delta, array());
+      $enable = isset($list_options['status']['enabled']) ? $list_options['status']['enabled'] : 1;
 
-    // Add some basic styling of form elements.
-    drupal_add_css(drupal_get_path('module', 'campaignmonitor') . '/css/campaignmonitor.theme.css');
+      // Build block.
+      $block['subject'] = t($lists[$delta]['name']);
+      if (isset($list_options['status']['enabled']) ? $list_options['status']['enabled'] : 1) {
+        $block['content'] = drupal_get_form('campaignmonitor_subscribe_form', $delta);
+      }
+      else {
+        $block['content'] = t('The Campaing monitor list "@list" is not enabled.', array('@list' => $lists[$delta]['name']));
+      }
+
+      // Add some basic styling of form elements.
+      drupal_add_css(drupal_get_path('module', 'campaignmonitor') . '/css/campaignmonitor.theme.css');
+    }
+    else {
+      drupal_set_message(t('Unable to fetch lists from Campaign monitor.'), 'error');
+    }
   }
 
   return $block;
