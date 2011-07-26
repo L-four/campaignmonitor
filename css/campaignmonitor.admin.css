@@ -1,0 +1,8 @@
+tr.campaignmonitor-list-disabled td {
+  color: #999;
+}
+
+tr.campaignmonitor-list-enabled td:last-child,
+tr.campaignmonitor-list-disabled td:last-child {
+  width: 120px;
+}

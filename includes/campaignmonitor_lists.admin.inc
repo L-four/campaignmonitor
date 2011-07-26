@@ -33,21 +33,34 @@ function campaignmonitor_admin_settings_lists() {
   $rows = array();
   if ($lists) {
     foreach ($lists as $id => $list) {
-      // Define supported oprations and allow other modules to add more.
+      // Define supported oprations.
       $operations = array(
         'Edit' => l(t('Edit'), 'admin/config/services/campaignmonitor/lists/' . $id . '/edit'),
         'Delete' => l(t('Delete'), 'admin/config/services/campaignmonitor/lists/' . $id . '/delete')
       );
+
+      // Load local list options.
+      $list_options = variable_get('campaignmonitor_list_' . $id, array());
+      $class = 'campaignmonitor-list-enabled';
+      if (isset($list_options['status']['enabled']) && !$list_options['status']['enabled']) {
+        $class = 'campaignmonitor-list-disabled';
+
+        // Add endable operation.
+        $operations['enable'] = l(t('Enable'), 'admin/config/services/campaignmonitor/lists/' . $id . '/enable');
+      }
+
+      // Allow other modules to add more operations.
       drupal_alter('campaignmonitor_operations', $operations);
 
       $stats = $cm->getListStats($id);
       $rows[] = array(
         'data' => array(
-            $list['name'],
-            $id,
-            $stats['TotalActiveSubscribers'] . ' / ' . $stats['TotalUnsubscribes'],
-            implode(' ', $operations),
-          ),
+          $list['name'],
+          $id,
+          $stats['TotalActiveSubscribers'] . ' / ' . $stats['TotalUnsubscribes'],
+          implode(' ', $operations),
+        ),
+        'class' => array('class' => $class),
       );
     }
   }
@@ -100,12 +113,32 @@ function campaignmonitor_admin_settings_list_edit($form, &$form_state, $list_id)
   // Get previouse save list information.
   $defaults = variable_get($form_key, array());
 
+  $form[$form_key]['status'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Enable list'),
+    '#description' => t('Enable the list to configure it and used it on the site.'),
+    '#collapsible' => FALSE,
+    '#collapsed' => FALSE,
+  );
+
+  $form[$form_key]['status']['enabled'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Enable'),
+    '#default_value' => isset($defaults['status']['enabled']) ? $defaults['status']['enabled'] : 1,
+    '#attributes' => array('class' => array('enabled-list-checkbox')),
+  );
+
   $form[$form_key]['options'] = array(
     '#type' => 'fieldset',
     '#title' => t('List options'),
     '#description' => t('Changing the values will result in an updated of the values on the Campaign Monitor homepage.'),
     '#collapsible' => TRUE,
     '#collapsed' => FALSE,
+    '#states' => array(
+      'visible' => array(
+         '.enabled-list-checkbox' => array('checked' => TRUE),
+      ),
+    ),
   );
 
   $form[$form_key]['options']['listname'] = array(
@@ -113,6 +146,11 @@ function campaignmonitor_admin_settings_list_edit($form, &$form_state, $list_id)
     '#title' => t('List name'),
     '#default_value' => $list['name'],
     '#required' => TRUE,
+    '#states' => array(
+      'visible' => array(
+        ':input[name="status[enabled]"]' => array('checked' => TRUE),
+      ),
+    ),
   );
 
   $form[$form_key]['options']['UnsubscribePage'] = array(
@@ -138,6 +176,11 @@ function campaignmonitor_admin_settings_list_edit($form, &$form_state, $list_id)
     '#title' => t('Display options'),
     '#collapsible' => TRUE,
     '#collapsed' => FALSE,
+    '#states' => array(
+      'visible' => array(
+        '.enabled-list-checkbox' => array('checked' => TRUE),
+      ),
+    ),
   );
 
   $form[$form_key]['display']['name'] = array(
@@ -160,6 +203,11 @@ function campaignmonitor_admin_settings_list_edit($form, &$form_state, $list_id)
       '#title' => t('Custom fields'),
       '#collapsible' => TRUE,
       '#collapsed' => FALSE,
+      '#states' => array(
+        'visible' => array(
+          '.enabled-list-checkbox' => array('checked' => TRUE),
+        ),
+      ),
     );
 
     $form[$form_key]['CustomFields']['selected'] = array(

@@ -41,10 +41,17 @@ module's files in this directory
 
 - Configure the module at: /admin/config/services/campaignmonitor
 
+------------
+Requirements
+------------
+This modules used the libraries module to detect the Campaign Monitor API
+library. It also uses the default "thumbnail" image style to generate image
+previews in the administration interface, so changing this image style will
+affect the administration interface.
+
 -------------
 Configuration
 -------------
-
 Make sure to have your API Key and Client Id.
 To retrieve these values follow the instructions here:
 http://www.campaignmonitor.com/api/required.aspx
