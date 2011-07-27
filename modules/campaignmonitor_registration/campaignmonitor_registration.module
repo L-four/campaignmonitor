@@ -31,6 +31,7 @@ function campaignmonitor_registration_form_user_register_form_alter(&$form, &$fo
   $options = array();
   foreach ($lists as $list_id => $list) {
     // Check if the list is selected to be shown.
+    $list_options = variable_get('campaignmonitor_list_' . $list_id, array());
     if (campaignmonitor_is_list_enabled($list_id) && $list_options && isset($list_options['display']['registration']) && $list_options['display']['registration']) {
       $options[$list_id] = $list['name'];
     }
