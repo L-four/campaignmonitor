@@ -116,8 +116,7 @@ function campaignmonitor_menu() {
 
   $items['admin/config/services/campaignmonitor/states'] = array(
     'title' => 'Statistics',
-    'page callback' => 'drupal_get_form',
-    'page arguments' => array('campaignmonitor_admin_settings_stats'),
+    'page callback' => 'campaignmonitor_admin_settings_stats',
     'access arguments' => array('administer campaignmonitor'),
     'weight' => -30,
     'type' => MENU_LOCAL_TASK,
@@ -126,6 +125,20 @@ function campaignmonitor_menu() {
 
   return $items;
 }
+
+/**
+ * Implements hook_theme().
+ */
+function campaignmonitor_theme() {
+  return array(
+    'campaignmonitor_list_stats' => array(
+      'template' => 'campaignmonitor_list_stats',
+      'variables' => array('list' => NULL, 'stats' => NULL),
+      'file' => 'includes/campaignmonitor_stats.admin.inc',
+    ),
+  );
+}
+
 
 /*
  * Implements hook_block_info().
