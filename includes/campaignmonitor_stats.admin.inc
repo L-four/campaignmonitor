@@ -8,14 +8,12 @@ function campaignmonitor_admin_settings_stats() {
   // Loop over the lists and display stats for each list.
   $output = '';
   foreach ($lists as $id => $list) {
-    $list_options = variable_get('campaignmonitor_list_' . $id, FALSE);
-    $list_enabled = isset($list_options['status']['enabled']) ? $list_options['status']['enabled'] : 1;
-    if ($list_enabled) {
+    if (campaignmonitor_is_list_enabled($id)) {
+      // List was enable so get stats.
       $output .= theme('campaignmonitor_list_stats', array('list' => $list, 'stats' => $cm->getListStats($id)));
     }
   }
 
   drupal_add_css(drupal_get_path('module', 'campaignmonitor') . '/css/campaignmonitor.admin.css');
-
   return $output;
 }

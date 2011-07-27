@@ -29,12 +29,10 @@ function campaignmonitor_registration_form_user_register_form_alter(&$form, &$fo
 
   // Build options for the form selector.
   $options = array();
-  foreach ($lists as $key => $list) {
+  foreach ($lists as $list_id => $list) {
     // Check if the list is selected to be shown.
-    $list_options = variable_get('campaignmonitor_list_' . $key, FALSE);
-    $list_enabled = isset($list_options['status']['enabled']) ? $list_options['status']['enabled'] : 1;
-    if ($list_enabled && $list_options && isset($list_options['display']['registration']) && $list_options['display']['registration']) {
-      $options[$key] = $list['name'];
+    if (campaignmonitor_is_list_enabled($list_id) && $list_options && isset($list_options['display']['registration']) && $list_options['display']['registration']) {
+      $options[$list_id] = $list['name'];
     }
   }
 

@@ -153,8 +153,7 @@ function campaignmonitor_block_info() {
     if ($lists) {
       foreach ($lists as $list_id => $list) {
         // Get local configuration options and check if the list is enabled.
-        $list_options = variable_get('campaignmonitor_list_' . $list_id, array());
-        if (isset($list_options['status']['enabled']) ? $list_options['status']['enabled'] : 1) {
+        if (campaignmonitor_is_list_enabled($list_id)) {
           $blocks[$list_id] = array(
             'info' => t('Subscribe to @list_name', array('@list_name' => $list['name'])),
           );
@@ -201,13 +200,8 @@ function campaignmonitor_block_view($delta) {
     // Get lists form Campaign Monitor.
     $lists = CampaignMonitor::getConnector()->getLists();
     if ($lists) {
-      // Get local configuration options and check if the list is enabled.
-      $list_options = variable_get('campaignmonitor_list_' . $delta, array());
-      $enable = isset($list_options['status']['enabled']) ? $list_options['status']['enabled'] : 1;
-
-      // Build block.
       $block['subject'] = t($lists[$delta]['name']);
-      if (isset($list_options['status']['enabled']) ? $list_options['status']['enabled'] : 1) {
+      if (campaignmonitor_is_list_enabled($delta)) {
         $block['content'] = drupal_get_form('campaignmonitor_subscribe_form', $delta);
       }
       else {
@@ -414,4 +408,16 @@ function campaignmonitor_subscribe_form_validate($form, &$form_state) {
 
   $lists = $cm->getLists();
   drupal_set_message(t('You are now subscribed to the "@list" list.', array('@list' => $lists[$list_id]['name'])), 'status');
+}
+
+/**
+ * Checks if the list given by id is enabled locally. If the list id enabled 1
+ * is returned else 0.
+ *
+ * @param string $list_id campaign monitor list id
+ * @return int
+ */
+function campaignmonitor_is_list_enabled($list_id) {
+  $list_options = variable_get('campaignmonitor_list_' . $list_id, FALSE);
+  return isset($list_options['status']['enabled']) ? $list_options['status']['enabled'] : 1;
 }
