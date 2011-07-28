@@ -198,8 +198,10 @@ function campaignmonitor_admin_settings_list_edit($form, &$form_state, $list_id)
   // List custom fields.
   if (!empty($list['CustomFields'])) {
       $options = array();
-      foreach ($list['CustomFields'] as $key => $value) {
-        $options[$key] = $value['FieldName'];
+      foreach ($list['CustomFields'] as $key => $field) {
+        // Form API, can't handle keys with [] in all cases.
+        $token_form_key = str_replace(array('[', ']'), '', $key);
+        $options[$token_form_key] = $field['FieldName'];
       }
 
 
@@ -208,6 +210,7 @@ function campaignmonitor_admin_settings_list_edit($form, &$form_state, $list_id)
       '#title' => t('Custom fields'),
       '#collapsible' => TRUE,
       '#collapsed' => FALSE,
+      '#attributes' => array('class' => array('tokenable', 'tokenable-custom-fields')),
       '#states' => array(
         'visible' => array(
           '.enabled-list-checkbox' => array('checked' => TRUE),
@@ -230,12 +233,6 @@ function campaignmonitor_admin_settings_list_edit($form, &$form_state, $list_id)
       '#title' => t('Field tokens'),
       '#collapsible' => TRUE,
       '#collapsed' => FALSE,
-      '#states' => array(
-        'visible' => array(
-          '.enabled-list-checkbox' => array('checked' => TRUE),
-          '.tokenable' => array('checked' => TRUE),
-        ),
-      ),
     );
 
     $form[$form_key]['tokens']['name'] = array(
@@ -248,6 +245,28 @@ function campaignmonitor_admin_settings_list_edit($form, &$form_state, $list_id)
         ),
       ),
     );
+
+    if (!empty($list['CustomFields'])) {
+      foreach ($list['CustomFields'] as $key => $field) {
+        if ($field['DataType'] == 'MultiSelectMany') {
+          // We can't handle this type of custom field (with tokens).
+          continue;
+        }
+
+        // Form API, can't handle keys with [] in all cases.
+        $token_form_key = str_replace(array('[', ']'), '', $key);
+        $form[$form_key]['tokens'][$token_form_key] = array(
+          '#type' => 'textfield',
+          '#title' => t('Custom field (@name)', array('@name' => $field['FieldName'])),
+          '#default_value' => isset($defaults['tokens'][$token_form_key]) ? $defaults['tokens'][$token_form_key] : '',
+          '#states' => array(
+            'visible' => array(
+              ':input[name="' . $form_key . '[CustomFields][selected][' . $token_form_key . ']' . '"]' => array('checked' => TRUE),
+            ),
+          ),
+        );
+      }
+    }
 
     $form[$form_key]['tokens']['token_tree'] = array(
       '#theme' => 'token_tree',
