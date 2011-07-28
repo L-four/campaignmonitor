@@ -192,6 +192,7 @@ function campaignmonitor_admin_settings_list_edit($form, &$form_state, $list_id)
     '#title' => t('Display Name field'),
     '#description' => t('When subscribing, should the name field be displayed.'),
     '#default_value' => isset($defaults['display']['name']) ? $defaults['display']['name'] : 0,
+    '#attributes' => array('class' => array('tokenable', 'tokenable-name')),
   );
 
   // List custom fields.
@@ -220,6 +221,36 @@ function campaignmonitor_admin_settings_list_edit($form, &$form_state, $list_id)
       '#description' => t('Select the fields that should be displayed on subscription forms.'),
       '#options' => $options,
       '#default_value' => isset($defaults['CustomFields']['selected']) ? $defaults['CustomFields']['selected'] : array(),
+    );
+  }
+
+  if (module_exists('token')) {
+    $form[$form_key]['tokens'] = array(
+      '#type' => 'fieldset',
+      '#title' => t('Field tokens'),
+      '#collapsible' => TRUE,
+      '#collapsed' => FALSE,
+      '#states' => array(
+        'visible' => array(
+          '.enabled-list-checkbox' => array('checked' => TRUE),
+          '.tokenable' => array('checked' => TRUE),
+        ),
+      ),
+    );
+
+    $form[$form_key]['tokens']['name'] = array(
+      '#type' => 'textfield',
+      '#title' => t('Name field'),
+      '#default_value' => isset($defaults['tokens']['name']) ? $defaults['tokens']['name'] : '[current-user:name]',
+      '#states' => array(
+        'visible' => array(
+          '.tokenable-name' => array('checked' => TRUE),
+        ),
+      ),
+    );
+
+    $form[$form_key]['tokens']['token_tree'] = array(
+      '#theme' => 'token_tree',
     );
   }
 

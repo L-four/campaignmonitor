@@ -250,6 +250,12 @@ function campaignmonitor_subscribe_form($form, &$form_state, $list_id) {
 
   // Should the name field be displayed for this user.
   if (isset($list_options['display']['name']) && $list_options['display']['name']) {
+    // Token replace if the token module is pressent.
+    if (module_exists('token')) {
+      $name = token_replace($list_options['tokens']['name']);
+    }
+
+    // Check if the user is subscribed and get name from campaign monitor.
     if (!empty($email) && $cm->isSubscribed($list_id, $email)) {
       // If subscribed, get her/his name from campaign monitor.
       $subscriber = $cm->getSubscriber($list_id, $email);
