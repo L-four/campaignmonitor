@@ -96,7 +96,8 @@ function campaignmonitor_user_form() {
     drupal_set_message('There are no available lists to subscribe to at the moment.', 'warning');
   }
 
-  $form['#submit'] = array('campaignmonitor_user_form_submit');
+  // Add validation function, we don't have a submit function due to the way
+  // we handle error from campaing monitor.
   $form['#validate'] = array('campaignmonitor_user_form_validate');
 
   return $form;

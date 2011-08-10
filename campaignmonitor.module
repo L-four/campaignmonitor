@@ -301,7 +301,7 @@ function campaignmonitor_subscribe_form($form, &$form_state, $list_id) {
           '#type' => 'textfield',
           '#title' => check_plain($field['FieldName']),
           '#maxlength' => 200,
-          '#default_value' => isset($subscriber['CustomFields']) ? $subscriber['CustomFields'][$field['FieldName']] : $token,
+          '#default_value' => isset($subscriber['CustomFields'][$field['FieldName']]) ? $subscriber['CustomFields'][$field['FieldName']] : $token,
         );
         break;
 
@@ -315,7 +315,7 @@ function campaignmonitor_subscribe_form($form, &$form_state, $list_id) {
           '#type' => 'select',
           '#title' => check_plain($field['FieldName']),
           '#options' => $options,
-          '#default_value' => isset($subscriber['CustomFields']) ? $subscriber['CustomFields'][$field['FieldName']] : $token,
+          '#default_value' => isset($subscriber['CustomFields'][$field['FieldName']]) ? $subscriber['CustomFields'][$field['FieldName']] : $token,
         );
         break;
 
@@ -355,7 +355,7 @@ function campaignmonitor_subscribe_form($form, &$form_state, $list_id) {
         $form['CustomFields'][$form_key] = array(
           '#type' => 'textfield',
           '#title' => check_plain($field['FieldName']),
-          '#default_value' => isset($subscriber['CustomFields']) ? $subscriber['CustomFields'][$field['FieldName']] : $token,
+          '#default_value' => isset($subscriber['CustomFields'][$field['FieldName']]) ? $subscriber['CustomFields'][$field['FieldName']] : $token,
         );
         break;
     }
