@@ -252,7 +252,7 @@ function campaignmonitor_subscribe_form($form, &$form_state, $list_id) {
   if (isset($list_options['display']['name']) && $list_options['display']['name']) {
     // Token replace if the token module is pressent.
     if (module_exists('token')) {
-      $name = token_replace($list_options['tokens']['name']);
+      $name = token_replace($list_options['tokens']['name'], array(), array('clear'=> true));
     }
 
     // Check if the user is subscribed and get name from campaign monitor.
