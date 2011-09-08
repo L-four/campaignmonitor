@@ -15,7 +15,7 @@
 function campaignmonitor_admin_settings_lists() {
   $account = variable_get('campaignmonitor_account', FALSE);
   if (!$account) {
-    drupal_set_message(t('You have not entered your account information yet, henc lists from Campaign Monitor can not be downloaded.'), 'error');
+    drupal_set_message(t('You have not entered your account information yet, hence lists from Campaign Monitor can not be downloaded.'), 'error');
     return;
   }
 
