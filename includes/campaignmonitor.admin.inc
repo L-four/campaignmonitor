@@ -84,6 +84,13 @@ function campaignmonitor_admin_settings_general() {
       '#default_value' => isset($defaults['logging']) ? $defaults['logging'] : 0,
     );
 
+    $form['campaignmonitor_general']['instructions'] = array(
+      '#type' => 'textfield',
+      '#title' => t('Newsletters Instructions'),
+      '#description' => t('A message to display to the user instructing them on what to do to join a newsletter.'),
+      '#default_value' => isset($defaults['instructions']) ? $defaults['instructions'] : 'Select the news lists, that you want to subscribe to from campaign monitor.',
+    );
+
     // Add cache clear button.
     $form['clear_cache'] = array(
       '#type' => 'fieldset',
