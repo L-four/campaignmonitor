@@ -83,7 +83,7 @@ function campaignmonitor_user_form() {
     $form['lists'] = array(
       '#type' => 'checkboxes',
       '#title' => t('News lists'),
-      '#description' => !empty($defaults['instructions']) ? $defaults['instructions'] : 'Select the news lists, that you want to subscribe to from campaign monitor.',
+      '#description' => !empty($defaults['instructions']) ? t($defaults['instructions']) : t('Select the news lists, that you want to subscribe to from campaign monitor.'),
       '#options' => $options,
       '#default_value' => $default,
     );
