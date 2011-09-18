@@ -35,7 +35,7 @@ module's files in this directory
 
   ~$ git clone https://github.com/campaignmonitor/createsend-php.git campaignmonitor
   ~$ cd campaignmonitor
-  ~$ git checkout e6a7e111864854dce39a69edce7d5b0f20f151ca
+  ~$ git checkout 1.0.11
 
 - Enable the module on the Modules administration page: /admin/modules
 

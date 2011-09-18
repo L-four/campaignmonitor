@@ -67,7 +67,8 @@ class CampaignMonitor {
     // Trying to find the campaign monitor library.
     $this->getLibraryPath();
 
-    // Enable logging ?.
+    // Enable logging.
+    $setting = variable_get('campaignmonitor_general', array());
     if (isset($setting['logging'])) {
       $this->logErrors = $setting['logging'];
     }
