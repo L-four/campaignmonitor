@@ -251,7 +251,7 @@ function campaignmonitor_subscribe_form($form, &$form_state, $list_id) {
   // Should the name field be displayed for this user.
   if (isset($list_options['display']['name']) && $list_options['display']['name']) {
     // Token replace if the token module is pressent.
-    if (module_exists('token')) {
+    if (module_exists('token') && $user->uid != 0) {
       $name = token_replace($list_options['tokens']['name'], array(), array('clear'=> true));
     }
 
