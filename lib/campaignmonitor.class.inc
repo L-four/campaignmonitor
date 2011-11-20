@@ -784,53 +784,30 @@ class CampaignMonitor {
   }
   
   /**
-   * Updates the subscriber information in a given set of newsletter lists.
+   * Updates the subscriber e-mail address for a given list.
    * 
    * @param array $listIds
-   *   An array with newsletter list ids.
+   *   List id.
    * 
-   * @param string $old_email
-   *   The old email of the user.
+   * @param string $oldEmail
+   *   The old e-mail address.
    * 
-   * @param string $new_email
-   *   The new email of the user.
-   * 
-   * @param string $name
-   *   Optional, the new name of the user. If empty, it will be ignored.
-   * 
-   * @param array $customFields
-   *   Optional, an array with custom fields.
+   * @param string $email
+   *   The new e-mail address.
    */
-  public function update($listIds = array(), $old_email, $new_email, $name = '', $customFields = array()) {
-    // If there are no listIds, we consider all of them.
-    if (empty ($listIds)) {
-      $lists = $this->getLists();
-      foreach ($lists as $list_id) {
-          $listIds[] = $list_id;
+  public function updateSubscriberEmail($listId, $oldEmail, $email) {
+    if ($obj = $this->createSubscriberObj($listId)) {
+      $result = $obj->update($oldEmail, array(
+        'EmailAddress' => $email,
+        'Resubscribe' => TRUE,
+      ));
+      if (!$result->was_successful()) {
+        $this->addError(WATCHDOG_ERROR, $result->response->Message, $result->http_status_code);
+        return FALSE;
       }
-    }
-    if (!empty ($listIds)) {
-      foreach ($listIds as $listId) {
-        if ($obj = $this->createSubscriberObj($listId)) {
-          $subscriber = array(
-            'EmailAddress' => $new_email,
-            'Resubscribe' => TRUE,
-          );
-          if (!empty ($name)) {
-            $subscriber['Name'] = $name;
-          }
-          if (!empty ($customFields)) {
-            $subscriber['customFields'] = $customFields;
-          }
-          $result = $obj->update($old_email, $subscriber);
-          if (!$result->was_successful()) {
-            $this->addError(WATCHDOG_ERROR, $result->response->Message, $result->http_status_code);
-            continue;
-          }
-          $this->removeSubscriberFromCache($listId, $old_email);
-          $this->removeSubscriberFromCache($listId, $new_email);
-        }
-      }
+      // Remove the old e-mail address form the subscriber cache.
+      $this->removeSubscriberFromCache($listId, $oldEmail);
+      return TRUE;
     }
   }
 
