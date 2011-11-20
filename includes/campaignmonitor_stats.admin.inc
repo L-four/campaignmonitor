@@ -1,6 +1,12 @@
 <?php
 
 function campaignmonitor_admin_settings_stats() {
+  $account = variable_get('campaignmonitor_account', FALSE);
+  if (!$account) {
+    drupal_set_message(t('You have not entered your account information yet, hence statistics from Campaign Monitor can not be downloaded.'), 'error');
+    return '';
+  }
+
   // Load list informations.
   $cm = CampaignMonitor::getConnector();
   $lists = $cm->getLists();
