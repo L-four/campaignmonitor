@@ -107,8 +107,23 @@ function campaignmonitor_admin_settings_general() {
 
   $form = system_settings_form($form);
   $form['#submit'][] = 'campaignmonitor_admin_settings_general_submit';
+  $form['#validate'][] = 'campaignmonitor_admin_settings_general_validate';
 
   return $form;
+}
+
+/**
+ * Implements form validation function to test if the api keys entered are
+ * valided.
+ */
+function campaignmonitor_admin_settings_general_validate($form, &$form_state) {
+  $cm = CampaignMonitor::getConnector($form_state['values']['campaignmonitor_account']['api_key'], $form_state['values']['campaignmonitor_account']['client_id']);
+  $cm->getLists();
+  $error = $cm->getLatestError();
+  print_r($error);
+  if ($error['code'] == 401) {
+    form_set_error('campaignmonitor_account', $error['message']);
+  }
 }
 
 /**

@@ -214,7 +214,7 @@ class CampaignMonitor {
    * @return object CampaingMonitor
    */
   public static function getConnector($api_key = FALSE, $client_key = FALSE) {
-    if (!isset(self::$instance)) {
+    if (($api_key && $client_key) || !isset(self::$instance)) {
       $class = __CLASS__;
       self::$instance = new $class($api_key, $client_key);
     }
