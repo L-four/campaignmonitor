@@ -782,6 +782,57 @@ class CampaignMonitor {
     }
     return FALSE;
   }
+  
+  /**
+   * Updates the subscriber information in a given set of newsletter lists.
+   * 
+   * @param array $listIds
+   *   An array with newsletter list ids.
+   * 
+   * @param string $old_email
+   *   The old email of the user.
+   * 
+   * @param string $new_email
+   *   The new email of the user.
+   * 
+   * @param string $name
+   *   Optional, the new name of the user. If empty, it will be ignored.
+   * 
+   * @param array $customFields
+   *   Optional, an array with custom fields.
+   */
+  public function update($listIds = array(), $old_email, $new_email, $name = '', $customFields = array()) {
+    // If there are no listIds, we consider all of them.
+    if (empty ($listIds)) {
+      $lists = $this->getLists();
+      foreach ($lists as $list_id) {
+          $listIds[] = $list_id;
+      }
+    }
+    if (!empty ($listIds)) {
+      foreach ($listIds as $listId) {
+        if ($obj = $this->createSubscriberObj($listId)) {
+          $subscriber = array(
+            'EmailAddress' => $new_email,
+            'Resubscribe' => TRUE,
+          );
+          if (!empty ($name)) {
+            $subscriber['Name'] = $name;
+          }
+          if (!empty ($customFields)) {
+            $subscriber['customFields'] = $customFields;
+          }
+          $result = $obj->update($old_email, $subscriber);
+          if (!$result->was_successful()) {
+            $this->addError(WATCHDOG_ERROR, $result->response->Message, $result->http_status_code);
+            continue;
+          }
+          $this->removeSubscriberFromCache($listId, $old_email);
+          $this->removeSubscriberFromCache($listId, $new_email);
+        }
+      }
+    }
+  }
 
   /**
    * Clears all the caches used by this wrapper object.
