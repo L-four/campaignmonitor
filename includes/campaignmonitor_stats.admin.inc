@@ -10,6 +10,10 @@ function campaignmonitor_admin_settings_stats() {
   // Load list informations.
   $cm = CampaignMonitor::getConnector();
   $lists = $cm->getLists();
+  $error = $cm->getLatestError();
+  if ($error['code'] != 1) {
+    drupal_set_message($error['message'], 'error');
+  }
 
   // Loop over the lists and display stats for each list.
   $output = '';

@@ -22,6 +22,10 @@ function campaignmonitor_admin_settings_lists() {
   // Download list information form campaign monitor
   $cm = CampaignMonitor::getConnector();
   $lists = $cm->getLists();
+  $error = $cm->getLatestError();
+  if ($error['code'] != 1) {
+    drupal_set_message($error['message'], 'error');
+  }
 
   $header = array(
     array('data' => t('Title'), 'field' => 'title', 'sort' => 'asc'),
