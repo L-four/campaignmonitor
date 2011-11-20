@@ -60,7 +60,7 @@ function campaignmonitor_registration_form_user_register_form_alter(&$form, &$fo
  * feedback in the case of failure to communicate with the servers.
  */
 function campaignmonitor_registration_form_user_register_submit($form, &$form_state) {
-  if (isset($form_state['values']['campaignmonitor_lists'])) {
+  if (isset($form_state['values']['campaignmonitor_lists']) && !form_get_errors()) {
     // Get connected to the API and get lists.
     $cm = CampaignMonitor::getConnector();
     $lists_info = $cm->getLists();
