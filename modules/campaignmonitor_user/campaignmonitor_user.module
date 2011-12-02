@@ -118,7 +118,7 @@ function campaignmonitor_user_form_validate($form, &$form_state) {
       // already in the cache, so it cheaper to check then re-subscribe.
       if (!$cm->isSubscribed($list_id, $user->mail)) {
         if (!$cm->subscribe($list_id, $user->mail, $user->name)) {
-          form_set_error('', t('You where not subscribed to the list, please try again.'));
+          form_set_error('', t('You were not subscribed to the list, please try again.'));
           return FALSE;
         }
         drupal_set_message(t('You are now subscribed to the "@list" list.', array('@list' => $lists_info[$list_id]['name'])), 'status');

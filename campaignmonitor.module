@@ -414,7 +414,7 @@ function campaignmonitor_subscribe_form_validate($form, &$form_state) {
 
   // Update subscriber information or add new subscriber to the list.
   if (!$cm->subscribe($list_id, $email, $name, $custom_fields)) {
-    form_set_error('', t('You where not subscribed to the list, please try again.'));
+    form_set_error('', t('You were not subscribed to the list, please try again.'));
     return FALSE;
   }
 

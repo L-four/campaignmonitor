@@ -55,7 +55,7 @@ function campaignmonitor_registration_form_user_register_form_alter(&$form, &$fo
 }
 
 /**
- * Validation form, where information about the selected list is submitted to
+ * Validation form, were information about the selected list is submitted to
  * campaign monitor. It's done in a validation form to eable better user
  * feedback in the case of failure to communicate with the servers.
  */
@@ -70,7 +70,7 @@ function campaignmonitor_registration_form_user_register_submit($form, &$form_st
       if ($selected) {
         // Try to subscribe to the list.
         if (!$cm->subscribe($list_id, $form_state['values']['mail'], $form_state['values']['name'])) {
-          form_set_error('', t('You where not subscribed to the list, please try again.'));
+          form_set_error('', t('You were not subscribed to the list, please try again.'));
           return FALSE;
         }
         drupal_set_message(t('You are now subscribed to the "@list" list.', array('@list' => $lists_info[$list_id]['name'])), 'status');
