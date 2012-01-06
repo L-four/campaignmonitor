@@ -131,6 +131,9 @@ function campaignmonitor_menu() {
  */
 function campaignmonitor_theme() {
   return array(
+    'campaignmonitor_subscribe_form' => array(
+      'render element' => 'form',
+    ),
     'campaignmonitor_list_stats' => array(
       'template' => 'campaignmonitor_list_stats',
       'variables' => array('list' => NULL, 'stats' => NULL),
