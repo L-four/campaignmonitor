@@ -287,7 +287,7 @@ function campaignmonitor_subscribe_form($form, &$form_state, $list_id) {
     $form_key = str_replace(array('[', ']'), '', $key);
 
     // Check if field should be displayed.
-    if (!$list_options['CustomFields']['selected'][$form_key]) {
+    if (isset($list_options['CustomFields']) && !$list_options['CustomFields']['selected'][$form_key]) {
       // Field is not selected, so continue.
       continue;
     }
