@@ -373,17 +373,15 @@ function campaignmonitor_subscribe_form($form, &$form_state, $list_id) {
     '#type' => 'submit',
     '#value' => t('Subscribe'),
   );
-  $form['#validate'][] = 'campaignmonitor_subscribe_form_validate';
 
   return $form;
 }
 
 /**
- * Subscribe form validation handler, which calls the API. It's done in the
- * validation handler to provide better user feedback on failure.
- *
+ * Subscribe form submit handler, which calls the API. It may return form errors
+ * if the API call fails.
  */
-function campaignmonitor_subscribe_form_validate($form, &$form_state) {
+function campaignmonitor_subscribe_form_submit($form, &$form_state) {
   // Get a campaign monitor object.
   $cm = CampaignMonitor::getConnector();
 
@@ -418,6 +416,7 @@ function campaignmonitor_subscribe_form_validate($form, &$form_state) {
   // Update subscriber information or add new subscriber to the list.
   if (!$cm->subscribe($list_id, $email, $name, $custom_fields)) {
     form_set_error('', t('You were not subscribed to the list, please try again.'));
+    $form_state['redirect'] = FALSE;
     return FALSE;
   }
 
