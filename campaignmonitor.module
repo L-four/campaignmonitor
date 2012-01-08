@@ -394,16 +394,16 @@ function campaignmonitor_subscribe_form_submit($form, &$form_state) {
         // Transform two level array into one level.
         foreach ($field as $value) {
           $custom_fields[] = array(
-            'Key' => $key,
-            'Value' => $value
+            'Key' => check_plain($key),
+            'Value' => check_plain($value)
           );
         }
       }
       else {
         // Add non-array custom fields.
         $custom_fields[] = array(
-          'Key' => $key,
-          'Value' => $field
+          'Key' => check_plain($key),
+          'Value' => check_plain($field)
         );
       }
     }

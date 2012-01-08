@@ -49,15 +49,12 @@ function campaignmonitor_registration_form_user_register_form_alter(&$form, &$fo
       '#description' => !empty($defaults['instructions']) ? t($defaults['instructions']) : t('Select the news lists, that you want to subscribe to from campaign monitor.'),
       '#options' => $options,
     );
-
-    $form['#validate'][] = 'campaignmonitor_registration_form_user_register_submit';
   }
 }
 
 /**
- * Validation form, were information about the selected list is submitted to
- * campaign monitor. It's done in a validation form to eable better user
- * feedback in the case of failure to communicate with the servers.
+ * Submission form handler, were information about the selected list is
+ * submitted to campaign monitor.
  */
 function campaignmonitor_registration_form_user_register_submit($form, &$form_state) {
   if (isset($form_state['values']['campaignmonitor_lists']) && !form_get_errors()) {
@@ -69,8 +66,9 @@ function campaignmonitor_registration_form_user_register_submit($form, &$form_st
     foreach ($form_state['values']['campaignmonitor_lists'] as $list_id => $selected) {
       if ($selected) {
         // Try to subscribe to the list.
-        if (!$cm->subscribe($list_id, $form_state['values']['mail'], $form_state['values']['name'])) {
+        if (!$cm->subscribe($list_id, check_plain($form_state['values']['mail']), check_plain($form_state['values']['name']))) {
           form_set_error('', t('You were not subscribed to the list, please try again.'));
+          $form_state['redirect'] = FALSE;
           return FALSE;
         }
         drupal_set_message(t('You are now subscribed to the "@list" list.', array('@list' => $lists_info[$list_id]['name'])), 'status');
