@@ -3,7 +3,6 @@ api = 2
 
 libraries[campaignmonitor][download][type] = "git"
 libraries[campaignmonitor][download][url] = "http://github.com/campaignmonitor/createsend-php.git"
-libraries[campaignmonitor][download][revision] = "1.0.11"
+libraries[campaignmonitor][download][tag] = "1.0.13"
 
-projects[libraries][subdir] = "contrib"
-projects[libraries][version] = "1.0"
+projects[libraries] = "1.0"
