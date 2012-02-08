@@ -723,7 +723,7 @@ class CampaignMonitor {
    * @param type $email
    */
   public function removeSubscriberFromCache($listId, $email) {
-   if (($cache = cache_get('campaignmonitor_subscribers')) && !empty($cache->data)) {
+    if (($cache = cache_get('campaignmonitor_subscribers')) && !empty($cache->data)) {
       // Cache information found.
       $this->subscribers = $cache->data;
       if (isset($this->subscribers[$listId . $email])) {
@@ -782,16 +782,16 @@ class CampaignMonitor {
     }
     return FALSE;
   }
-  
+
   /**
    * Updates the subscriber e-mail address for a given list.
-   * 
+   *
    * @param array $listIds
    *   List id.
-   * 
+   *
    * @param string $oldEmail
    *   The old e-mail address.
-   * 
+   *
    * @param string $email
    *   The new e-mail address.
    */

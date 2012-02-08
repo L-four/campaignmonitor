@@ -425,7 +425,7 @@ function campaignmonitor_admin_settings_list_create_form() {
  * @param array $form_state
  * @return boolean FALSE on failure
  */
-function campaignmonitor_admin_settings_list_create_form_validate($form, &$form_state) {  
+function campaignmonitor_admin_settings_list_create_form_validate($form, &$form_state) {
   $cm = CampaignMonitor::getConnector();
   $result = $cm->createList($form_state['values']['listname'],
                             $form_state['values']['UnsubscribePage'],
