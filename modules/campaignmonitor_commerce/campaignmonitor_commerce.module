@@ -1,0 +1,24 @@
+<?php
+
+/*
+ * @file
+ * Enable users to select which newsletter lists they want to subscribe on the
+ * commerce checkout page.
+ */
+
+/**
+ * Implements hook_commerce_checkout_pane_info().
+ */
+function campaignmonitor_commerce_commerce_checkout_pane_info() {
+  $checkout_panes['campaignmonitor_commerce'] = array(
+    'title' => t('Newsletters'),
+    'page' => 'checkout',
+    'locked' => TRUE,
+    'module' => 'campaignmonitor_commerce',
+    'file' => 'includes/campaignmonitor_commerce.checkout_pane.inc',
+    'base' => 'campaignmonitor_commerce_pane',
+    'weight' => 9,
+  );
+
+  return $checkout_panes;
+}

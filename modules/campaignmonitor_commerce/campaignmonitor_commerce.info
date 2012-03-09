@@ -1,0 +1,9 @@
+name = Campaign Monitor Commerce Checkout page
+description = "Adds support for campaign monitor on the commerce checkout page"
+core = 7.x
+package = Campaign Monitor
+configure = admin/commerce/config/checkout/form/pane/campaignmonitor_commerce
+dependencies[] = campaignmonitor
+dependencies[] = commerce_checkout
+files[] = campaignmonitor_commerce.module
+files[] = includes/campaignmonitor_commerce.checkout_pane.inc
